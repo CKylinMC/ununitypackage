@@ -7,7 +7,7 @@ namespace ununitypackage;
 
 public class Core
 {
-    static IEnumerable<TarEntry> ToEnumerable(TarReader reader)
+    static IEnumerable<TarEntry?> ToEnumerable(TarReader reader)
     {
         while (true)
         {
@@ -53,8 +53,9 @@ public class Core
                 DisplayTimeInRealTime = true
             });
             bar.Tick("Listing package...");
-            var count = 0;
+            int count;
             {
+                // make a scope for "using"
                 using var tmpfile = packpath.OpenRead();
                 using var tmpgzip = new GZipStream(tmpfile, CompressionMode.Decompress);
                 using var tmptar = new TarReader(tmpgzip, true);
@@ -166,7 +167,7 @@ public class Core
         return false;
     }
 
-    public static bool Build(DirectoryInfo folderpath, FileInfo outputPack, FileInfo cover = null)
+    public static bool Build(DirectoryInfo folderpath, FileInfo outputPack, FileInfo? cover)
 {
     // Check if the directory exists
     if (!folderpath.Exists)
@@ -233,7 +234,7 @@ public class Core
         }
     }
     // If cover is not null and exists, convert it to string, else pass an empty string
-    var coverPath = cover != null && cover.Exists ? cover.FullName : "";
+    var coverPath = cover is { Exists: true } ? cover.FullName : "";
     
     bar.Tick("Building package...");
 

@@ -1,6 +1,4 @@
-﻿using System;
-using System.CommandLine;
-using System.CommandLine.Invocation;
+﻿using System.CommandLine;
 using ununitypackage;
 
 var app = new RootCommand()
@@ -44,19 +42,19 @@ var cover = new Option<FileInfo?>(new[] { "--cover", "-c" }, "Cover image for th
 buildCommand.AddArgument(sourcePath);
 buildCommand.AddArgument(output);
 buildCommand.AddOption(cover);
-buildCommand.SetHandler((sourcePath, output, cover) =>
+buildCommand.SetHandler((srcPath, destFile, coverImg) =>
 {
-    if(sourcePath == null)
+    if(srcPath == null)
     {
         Console.WriteLine("Please provide a folder to build package.");
         return;
     }
-    if(output == null)
+    if(destFile == null)
     {
         Console.WriteLine("Please provide an output file.");
         return;
     }
-    Console.WriteLine(Core.Build(sourcePath, output, cover)
+    Console.WriteLine(Core.Build(srcPath, destFile, coverImg)
         ? "Built successfully."
         : "Failed to build."); // return success or not
 }, sourcePath, output, cover);

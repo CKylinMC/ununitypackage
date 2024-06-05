@@ -1,23 +1,22 @@
 ﻿using System.Formats.Tar;
-using System.IO.Compression;
-using ShellProgressBar;
+using System.Text;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Tar;
-using System.Text;
+using ShellProgressBar;
 
 namespace ununitypackage;
 
 public class UnityPackageStructure
 {
-    public class AssetFile
+    public class AssetFile(string uuid)
     {
-        public string UUID;
+        public readonly string UUID = uuid;
         public string RealPath = "";
         public string RealMetaPath => $"{RealPath}.meta";
-        public TarEntry MetaEntry;
-        public TarEntry AssetEntry;
-        public bool PathSet = false;
+        public TarEntry? MetaEntry;
+        public TarEntry? AssetEntry;
+        public bool PathSet;
         public bool MetaSet = false;
         public bool AssetSet = false;
         public string PhysicalPath = "";
@@ -25,11 +24,6 @@ public class UnityPackageStructure
         public bool Ready => PathSet && MetaSet && AssetSet;
         public bool MetaReady => PathSet && MetaSet;
         public bool AssetReady => PathSet && AssetSet;
-
-        public AssetFile(string uuid)
-        {
-            UUID = uuid;
-        }
     }
 
     public Dictionary<string, AssetFile> Assets;
@@ -58,15 +52,13 @@ public class UnityPackageStructure
         {
             return asset;
         }
-        else
-        {
-            var assetItem = new AssetFile(uuid);
-            Assets.Add(uuid, assetItem);
-            return assetItem;
-        }
+
+        var assetItem = new AssetFile(uuid);
+        Assets.Add(uuid, assetItem);
+        return assetItem;
     }
 
-    public void DoBuildPack(string outputPackage, string cover = "", ProgressBar progressBar = null)
+    public void DoBuildPack(string outputPackage, string cover = "", ProgressBar? progressBar = null)
     {
         using var bar = progressBar?.Spawn(Assets.Count + 1, "Building package...", new ProgressBarOptions
         {
@@ -118,20 +110,20 @@ public class UnityPackageStructure
             {
                 var metaPath = Path.Combine(outputBasePath, asset.RealMetaPath);
                 var assetPath = Path.Combine(outputBasePath, asset.RealPath);
-                asset.MetaEntry.ExtractToFile(metaPath, true);
-                asset.AssetEntry.ExtractToFile(assetPath, true);
+                asset.MetaEntry?.ExtractToFile(metaPath, true);
+                asset.AssetEntry?.ExtractToFile(assetPath, true);
                 subbar?.Tick($"Extracted {asset.RealPath}...");
             }
             else if (asset.MetaReady)
             {
                 var metaPath = Path.Combine(outputBasePath, asset.RealMetaPath);
-                asset.MetaEntry.ExtractToFile(metaPath, true);
+                asset.MetaEntry?.ExtractToFile(metaPath, true);
                 subbar?.Tick($"Extracted (Folder) {asset.RealPath}...");
             }
             else if (asset.AssetReady)
             {
                 var assetPath = Path.Combine(outputBasePath, asset.RealPath);
-                asset.AssetEntry.ExtractToFile(assetPath, true);
+                asset.AssetEntry?.ExtractToFile(assetPath, true);
                 subbar?.Tick($"Extracted (PureFile) {asset.RealPath}...");
             }
             else
