@@ -304,6 +304,7 @@ impl Index {
         let mut names = BTreeMap::new();
         let mut pathnames = BTreeMap::<String, (usize, String)>::new();
         let mut metas = BTreeMap::<String, MetaInfo>::new();
+        let mut meta_errors = BTreeMap::<String, String>::new();
         scan(path, limits, |id, entry| {
             let name = std::str::from_utf8(&entry.path_bytes())
                 .context("tar path is not UTF-8")?
@@ -365,11 +366,18 @@ impl Index {
                         Err(e) => index.error(format!("invalid pathname in {group}: {e}")),
                     }
                 } else if part == "asset.meta" {
+                    if entry.size() > 4 << 20 {
+                        meta_errors
+                            .insert(group.into(), format!("{normalized}: meta exceeds 4 MiB"));
+                        return Ok(());
+                    }
                     match meta_info(&small_read(entry, 4 << 20)?) {
                         Ok(meta) => {
                             metas.insert(group.into(), meta);
                         }
-                        Err(e) => index.error(format!("{normalized}: {e:#}")),
+                        Err(e) => {
+                            meta_errors.insert(group.into(), format!("{normalized}: {e:#}"));
+                        }
                     }
                 }
             }
@@ -386,6 +394,9 @@ impl Index {
                 .push(entry.id);
         }
         for (guid, (pathname, path)) in pathnames {
+            if let Some(error) = meta_errors.remove(&guid) {
+                index.error(error);
+            }
             if !guids.insert(guid.to_lowercase()) {
                 index.error(format!("duplicate GUID (case alias): {guid}"));
             }

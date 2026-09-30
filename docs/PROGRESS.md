@@ -39,6 +39,8 @@ implemented; hardening, interoperability and usage documentation are complete.
   testLeadingDots.unitypackage pass verify. Third-party payloads are not committed.
 - Public security fixtures use plain tar: wrapped with gzip only for checks;
   bad-Windows-name content remains inspectable, unsafe pathnames are diagnosed.
+- Binary/oversized unknown asset.meta entries are kept raw when no pathname
+  defines a resource; they are not rejected merely because of their basename.
 
 ## Validation and limitations
 

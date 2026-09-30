@@ -998,6 +998,24 @@ fn drive_and_unc_paths_cannot_hide_behind_dot_prefixes() {
     }
 }
 
+#[test]
+fn unknown_asset_meta_is_not_interpreted_without_a_pathname() {
+    let dir = TempDir::new().unwrap();
+    let package = fixture(
+        dir.path(),
+        vec![
+            ("extras/asset.meta".into(), vec![0, 255, 23]),
+            ("large-extra/asset.meta".into(), vec![0; 5 << 20]),
+        ],
+    );
+    let idx = index(&package);
+    idx.ensure_valid().unwrap();
+    assert!(idx.resources.is_empty());
+    let out = dir.path().join("repacked");
+    write::rewrite(&idx, &out, false, &BTreeMap::new(), &[]).unwrap();
+    assert_eq!(contents(&out), contents(&package));
+}
+
 #[cfg(target_os = "macos")]
 #[test]
 fn macos_system_directory_aliases_are_allowed() {
