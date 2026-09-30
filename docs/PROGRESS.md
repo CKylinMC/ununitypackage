@@ -10,7 +10,7 @@ the original .NET project is retained under legacy/dotnet. The requested usage
 guide and binary-name correction are complete and have passed native CI.
 Actual Unity Editor import remains a separate unrun gate.
 
-## Current goal: 2.0.0 tag-triggered release
+## Completed: 2.0.0 tag-triggered release
 
 The original remote v1.0.0 release was confirmed. Cargo.toml/Cargo.lock and
 versioned examples now use 2.0.0. AGENTS.md and RELEASING.md persist the user's
@@ -30,8 +30,17 @@ Release commit 8a07187296c64d67f904825d371ed59375e03828 was pushed to next.
 Annotated v2.0.0 was pushed; remote tag object is 4facd5a9f40ea8fdd69be9140db920fb85fb733f
 and its peeled SHA matches that exact commit. Tag push triggered
 [Release workflow](https://github.com/CKylinMC/ununitypackage/actions/runs/36753329704),
-currently in progress. Next action: verify native jobs and the resulting GitHub
-Release assets/prerelease status/automatic notes; publication is not claimed yet.
+completed successfully: version validation, all three native jobs, Rust 1.88 and
+the publication job passed. [v2.0.0 Release](https://github.com/CKylinMC/ununitypackage/releases/tag/v2.0.0)
+is published with draft=false and prerelease=false. GitHub-generated notes link
+the v1.0.0...v2.0.0 changelog. All three platform archives and SHA-256 companions
+are present. No tag was moved; later progress commits only update next.
+
+All published bundles were downloaded and verified: SHA-256, root uup/uup.exe,
+six bundled files and Linux x86_64/macOS ARM64/Windows x86_64 binary headers.
+Unix executable modes are 0755; the downloaded Linux executable reports uup 2.0.0.
+The release is complete. Future development creates no tags until a release is
+requested, following AGENTS.md and RELEASING.md.
 
 ## Delivered
 
@@ -75,8 +84,9 @@ Follow-up commit 3cbd5cb was pushed and its remote SHA verified. Linux, macOS,
 Windows and Rust 1.88 jobs all passed in the native run recorded below. GitHub's
 API confirms all three artifacts are available. Native interoperability commands
 execute uup / uup.exe, and upload paths include those binaries and USAGE.md.
-Direct ZIP inspection from this cloud host was unavailable (artifact download
-returned HTTP 403); no claim of downloaded-binary inspection is made.
+At that earlier checkpoint, direct Actions ZIP inspection was unavailable
+(HTTP 403). The newer published Release downloads were inspected successfully
+as recorded above.
 
 ## Verified
 
@@ -86,20 +96,23 @@ package passed verify, and the embedded Python example correctly selected by GUI
 and kept payload bytes separate from JSON. This follow-up changes documentation
 and the artifact file list only; no Rust implementation changed.
 
-Tested implementation commit: 3cbd5cb4f953cab5cce7966facda27245c7b6386.
+Tested release commit: 8a07187296c64d67f904825d371ed59375e03828 (v2.0.0).
 
-[Successful native CI run](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)
+[Successful release CI run](https://github.com/CKylinMC/ununitypackage/actions/runs/36753329704)
 
 | Job | Result |
 | --- | --- |
+| Version validation | PASS: seven release tests and Cargo/tag alignment |
 | Linux native | PASS: format, clippy, regressions, release build, Python interoperability |
 | macOS native | PASS: format, clippy, regressions, release build, Python interoperability |
 | Windows native | PASS: format, clippy, regressions, release build, Python interoperability |
 | Rust 1.88 minimum | PASS: regressions |
+| GitHub Release | PASS: complete assets/checksums, generated notes and stable publication |
 
-Verified downloadable artifacts: uup-cli-Linux-X64, uup-cli-macOS-ARM64 and
-uup-cli-Windows-X64. Upload paths are target/release/uup or target/release/uup.exe,
-README, docs/USAGE.md and LICENSE.
+Verified Release archives: uup-v2.0.0-linux-x86_64.tar.gz,
+uup-v2.0.0-macos-aarch64.tar.gz and uup-v2.0.0-windows-x86_64.zip, each with a
+.sha256 asset. Bundles contain uup/uup.exe at root, README, SKILL.md, LICENSE,
+docs/USAGE.md and docs/RELEASING.md.
 
 Local Linux validation: 32 integration regressions pass; cargo fmt --check,
 strict clippy, release build and independent Python USTAR/GNU/local-PAX checks
@@ -126,10 +139,10 @@ committed; regression fixtures are generated from explicit test data.
 
 ## Checkpoints and continuation
 
-Implementation checkpoints f356462, 6c8cf2a, d7812e5, bf52144, 79399b2 and 3cbd5cb
-were committed, pushed and checked against remote SHAs. Documentation checkpoint
-683b087 recorded the original CI result. The latest documentation checkpoint
-records the renamed binary's successful CI and changes no implementation code.
+Implementation checkpoints f356462, 6c8cf2a, d7812e5, bf52144, 79399b2, 3cbd5cb and
+release 8a07187 were committed, pushed and checked against remote SHAs. Checkpoint
+ff1bd51 recorded the published tag and running release job. The final documentation
+checkpoint records successful release delivery and changes no implementation code.
 
 For subsequent work, follow CLOUD-RUNBOOK.md: inspect local/remote state and this
 file before changing anything. The next independent validation task is the Unity
