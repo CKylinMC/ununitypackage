@@ -102,7 +102,7 @@ pub fn items(index: &Index, raw: bool) -> Vec<Item> {
         consumed.extend(r.asset);
         consumed.extend(r.meta);
         for &id in &r.entries {
-            if index.entries[id].kind == "directory" {
+            if index.entries[id].kind == "directory" && index.entries[id].path == r.guid {
                 consumed.insert(id);
             }
         }

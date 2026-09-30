@@ -7,7 +7,7 @@ use flate2::{Compression, GzBuilder, write::GzEncoder};
 use std::{
     collections::BTreeMap,
     fs::File,
-    io::{self, Cursor, Write},
+    io::{self, Cursor, Read, Write},
     path::{Path, PathBuf},
 };
 use tar::{Builder, Header};
@@ -44,6 +44,37 @@ pub enum Edit {
 }
 type OutputTar<'a> = Builder<GzEncoder<&'a mut File>>;
 
+fn long_extension(builder: &mut OutputTar<'_>, typ: u8, value: &[u8]) -> Result<()> {
+    let mut header = Header::new_gnu();
+    header.set_path("././@LongLink")?;
+    header.set_mode(0o644);
+    header.set_uid(0);
+    header.set_gid(0);
+    header.set_mtime(0);
+    header.set_entry_type(tar::EntryType::new(typ));
+    header.set_size(value.len() as u64 + 1);
+    header.set_cksum();
+    builder.append(&header, Cursor::new(value).chain(io::repeat(0).take(1)))?;
+    Ok(())
+}
+
+fn append_exact(
+    builder: &mut OutputTar<'_>,
+    header: &mut Header,
+    name: &str,
+    data: impl io::Read,
+) -> Result<()> {
+    if header.path_bytes().is_empty() && header.set_path(name).is_err() {
+        header.set_path("uup-long-path")?;
+    }
+    if header.path_bytes().as_ref() != name.as_bytes() {
+        long_extension(builder, b'L', name.as_bytes())?;
+    }
+    header.set_cksum();
+    builder.append(header, data)?;
+    Ok(())
+}
+
 fn append(
     builder: &mut OutputTar<'_>,
     name: &str,
@@ -63,15 +94,15 @@ fn append(
             header.set_entry_type(tar::EntryType::Directory);
             header.set_mode(0o755);
             header.set_size(0);
-            builder.append_data(&mut header, name, io::empty())?;
+            append_exact(builder, &mut header, name, io::empty())?;
         }
         Data::Bytes(b) => {
             header.set_entry_type(tar::EntryType::Regular);
-            builder.append_data(&mut header, name, Cursor::new(b))?;
+            append_exact(builder, &mut header, name, Cursor::new(b))?;
         }
         Data::File(path) => {
             header.set_entry_type(tar::EntryType::Regular);
-            builder.append_data(&mut header, name, File::open(path)?)?;
+            append_exact(builder, &mut header, name, File::open(path)?)?;
         }
     }
     Ok(())
@@ -205,7 +236,18 @@ pub fn rewrite(
                     append(builder, &expected.name, data, Some(entry.header()))?;
                 } else {
                     let mut header = entry.header().clone();
-                    builder.append_data(&mut header, &expected.name, entry)?;
+                    header.set_size(expected.size);
+                    if typ.is_symlink() || typ.is_hard_link() {
+                        ensure!(
+                            expected.size == 0,
+                            "link entries with payloads are unsupported"
+                        );
+                        let link = entry.link_name_bytes().context("link target missing")?;
+                        if header.link_name_bytes().as_deref() != Some(link.as_ref()) {
+                            long_extension(builder, b'K', &link)?;
+                        }
+                    }
+                    append_exact(builder, &mut header, &expected.name, entry)?;
                 }
                 Ok(())
             })?;

@@ -51,7 +51,8 @@ validate it, sync and persist. Existing outputs require --force. Never modify th
 source or truncate an output before successful validation. Rewrites preserve
 untouched payload, pathname, meta, preview and unknown entry bytes; compressed
 bytes need not be identical. Preserve supported tar headers and PAX attributes;
-unsupported archive constructs must fail rather than silently lose content.
+unsupported archive constructs (global PAX and sparse tar) must fail rather than
+silently lose content. Link targets survive repack; extraction does not create links.
 
 Adding resources preserves supplied --meta and its GUID; otherwise use explicit
 --generate-meta. Generated GUIDs depend on target path and a namespace, not file
@@ -67,7 +68,10 @@ symlinks/reparse points. Windows reserved names and case/Unicode collisions are
 checked for actual filesystem output; inspection preserves names. Do not create
 archive links during extraction. Apply configurable entry/count/expanded-size
 limits. Inspection reports malformed resource records; extraction and mutation
-fail when requested output would be ambiguous or unsafe.
+fail when requested output would be ambiguous or unsafe. --raw / raw-only entry
+extraction can recover payloads despite resource semantic errors, while still
+checking physical paths and output safety. Concurrent filesystem modification
+is unsupported; extraction failures may leave partial output.
 
 ## Metadata and UPM
 

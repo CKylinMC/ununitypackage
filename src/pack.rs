@@ -15,7 +15,6 @@ pub struct PackOptions {
     pub generate_meta: bool,
     pub exclude: Vec<String>,
     pub force: bool,
-    pub upm: bool,
 }
 
 pub fn generated_guid(path: &str) -> String {
@@ -207,8 +206,13 @@ pub fn pack(source: &Path, output: &Path, options: &PackOptions, limits: Limits)
     }
     // A sibling meta describes the selected root folder (when it exists).
     let root_meta = std::path::PathBuf::from(format!("{}.meta", source.display()));
-    if root_meta.exists() {
-        let (guid, records) = resource(source, &prefix, Some(&root_meta), options.generate_meta)?;
+    if root_meta.exists() || (options.generate_meta && prefix != "Assets") {
+        let (guid, records) = resource(
+            source,
+            &prefix,
+            root_meta.exists().then_some(root_meta.as_path()),
+            options.generate_meta,
+        )?;
         ensure!(guids.insert(guid.clone()), "duplicate root GUID: {guid}");
         additions.extend(records);
         count += 1;
@@ -239,6 +243,9 @@ pub fn upm_manifest(source: &Path) -> Result<(Value, Vec<String>)> {
             .context("package.json needs version")?,
     )?;
     let mut warnings = Vec::new();
+    if manifest.get("scopedRegistries").is_some() {
+        warnings.push("scopedRegistries must be configured in the destination project's Packages/manifest.json.".into());
+    }
     if let Some(deps) = manifest.get("dependencies") {
         let deps = deps.as_object().context("dependencies must be an object")?;
         for (name, version) in deps {

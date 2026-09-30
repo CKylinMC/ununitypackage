@@ -100,14 +100,15 @@ enum Layout {
 }
 #[derive(Subcommand)]
 enum Command {
-    Info {
-        package: PathBuf,
-    },
+    /// Show package totals and diagnostics.
+    Info { package: PathBuf },
+    /// List resources and special/unknown content.
     List {
         package: PathBuf,
         #[arg(long)]
         raw: bool,
     },
+    /// Find paths by substring, glob or regular expression.
     Find {
         package: PathBuf,
         pattern: String,
@@ -118,6 +119,7 @@ enum Command {
         #[arg(long)]
         raw: bool,
     },
+    /// Stream one asset, meta, preview or raw entry to stdout.
     Cat {
         package: PathBuf,
         #[command(flatten)]
@@ -125,6 +127,7 @@ enum Command {
         #[arg(long, value_enum, default_value = "asset")]
         part: Part,
     },
+    /// Show entry details and a bounded content preview.
     Show {
         package: PathBuf,
         #[command(flatten)]
@@ -136,9 +139,9 @@ enum Command {
         #[arg(long, default_value_t = 4096)]
         limit: usize,
     },
-    Verify {
-        package: PathBuf,
-    },
+    /// Validate compression, tar records and resource consistency.
+    Verify { package: PathBuf },
+    /// Extract all content or selected resources/raw entries.
     Extract {
         package: PathBuf,
         #[arg(short, long, default_value = ".")]
@@ -156,6 +159,7 @@ enum Command {
         #[arg(long)]
         no_meta: bool,
     },
+    /// Build a Unity package from a directory.
     #[command(visible_alias = "build")]
     Pack {
         directory: PathBuf,
@@ -169,11 +173,13 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Recompress a package while preserving its contents.
     Repack {
         package: PathBuf,
         #[command(flatten)]
         destination: Destination,
     },
+    /// Add a resource or raw entry at an explicit location.
     Add {
         package: PathBuf,
         file: PathBuf,
@@ -188,6 +194,7 @@ enum Command {
         #[command(flatten)]
         destination: Destination,
     },
+    /// Replace content, preserving resource identity by default.
     Replace {
         package: PathBuf,
         file: PathBuf,
@@ -198,6 +205,7 @@ enum Command {
         #[command(flatten)]
         destination: Destination,
     },
+    /// Delete a resource and its siblings, or an explicit raw entry.
     Remove {
         package: PathBuf,
         #[command(flatten)]
@@ -207,11 +215,13 @@ enum Command {
         #[command(flatten)]
         destination: Destination,
     },
+    /// Read, set or delete manifest/icon/cover metadata.
     Metadata {
         package: PathBuf,
         #[command(subcommand)]
         action: MetadataCommand,
     },
+    /// Convert a package.json directory to a Unity package.
     FromUpm {
         directory: PathBuf,
         output: PathBuf,
@@ -437,7 +447,6 @@ fn run(cli: &Cli) -> Result<()> {
                     generate_meta: *generate_meta,
                     exclude: exclude.clone(),
                     force: *force,
-                    upm: false,
                 },
                 limits,
             )?;
@@ -575,7 +584,6 @@ fn run(cli: &Cli) -> Result<()> {
                     generate_meta: *generate_meta,
                     exclude: exclude.clone(),
                     force: *force,
-                    upm: true,
                 },
                 limits,
             )?;
@@ -587,6 +595,25 @@ fn run(cli: &Cli) -> Result<()> {
                 }
                 eprintln!("converted {count} resources to {}", output.display());
             }
+        }
+    }
+    let destination = match &cli.command {
+        Command::Repack { destination, .. }
+        | Command::Add { destination, .. }
+        | Command::Replace { destination, .. }
+        | Command::Remove { destination, .. } => Some(destination),
+        Command::Metadata {
+            action:
+                MetadataCommand::Set { destination, .. } | MetadataCommand::Remove { destination, .. },
+            ..
+        } => Some(destination),
+        _ => None,
+    };
+    if let Some(destination) = destination {
+        if cli.json {
+            emit(&json!({"output":destination.output,"success":true}))?;
+        } else {
+            eprintln!("wrote {}", destination.output.display());
         }
     }
     Ok(())

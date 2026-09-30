@@ -46,6 +46,127 @@ impl<R: Read> Read for BoundedReader<R> {
 }
 pub type PackageReader = BoundedReader<MultiGzDecoder<BufReader<File>>>;
 
+/// Validate physical records before tar's iterator allocates GNU/PAX metadata.
+/// This also rejects hidden data beyond an end marker instead of dropping it on rewrite.
+fn validate_container(path: &Path, limits: Limits) -> Result<()> {
+    let mut reader = BoundedReader {
+        inner: MultiGzDecoder::new(BufReader::new(File::open(path)?)),
+        count: 0,
+        limit: limits.expanded_bytes,
+    };
+    let mut pending_size = None;
+    let mut count = 0;
+    loop {
+        let mut block = [0; 512];
+        reader
+            .read_exact(&mut block)
+            .context("truncated tar header or missing end marker")?;
+        if block.iter().all(|b| *b == 0) {
+            ensure!(pending_size.is_none(), "dangling PAX extension");
+            reader
+                .read_exact(&mut block)
+                .context("tar requires two end blocks")?;
+            ensure!(block.iter().all(|b| *b == 0), "data after tar end marker");
+            let mut buffer = [0; 8192];
+            loop {
+                let n = reader
+                    .read(&mut buffer)
+                    .context("invalid gzip trailer or truncated package")?;
+                if n == 0 {
+                    break;
+                }
+                ensure!(
+                    buffer[..n].iter().all(|b| *b == 0),
+                    "nonzero data after tar end marker"
+                );
+            }
+            return Ok(());
+        }
+        count += 1;
+        ensure!(
+            count <= limits.entries,
+            "archive entry count limit exceeded"
+        );
+        let mut header = Header::new_old();
+        header.as_mut_bytes().copy_from_slice(&block);
+        let sum: u32 = block[..148]
+            .iter()
+            .chain(&block[156..])
+            .map(|b| *b as u32)
+            .sum::<u32>()
+            + 256;
+        ensure!(header.cksum()? == sum, "tar header checksum mismatch");
+        let typ = header.entry_type();
+        ensure!(!typ.is_gnu_sparse(), "GNU sparse archives are unsupported");
+        ensure!(
+            !typ.is_pax_global_extensions(),
+            "global PAX headers are unsupported; use local PAX headers"
+        );
+        let extension =
+            typ.is_gnu_longname() || typ.is_gnu_longlink() || typ.is_pax_local_extensions();
+        let declared_size = header.entry_size()?;
+        let size = if extension {
+            declared_size
+        } else {
+            pending_size.take().unwrap_or(declared_size)
+        };
+        ensure!(size <= limits.entry_bytes, "entry size limit exceeded");
+        if extension {
+            let cap = if typ.is_pax_local_extensions() {
+                1 << 20
+            } else {
+                64 << 10
+            };
+            ensure!(size <= cap, "tar extension metadata exceeds {cap} bytes");
+            let mut data = vec![0; size as usize];
+            reader
+                .read_exact(&mut data)
+                .context("truncated tar extension")?;
+            if typ.is_pax_local_extensions() {
+                let mut rest = data.as_slice();
+                while !rest.is_empty() {
+                    let space = rest
+                        .iter()
+                        .position(|b| *b == b' ')
+                        .context("invalid PAX record")?;
+                    let length: usize = std::str::from_utf8(&rest[..space])?.parse()?;
+                    ensure!(
+                        length > space + 2 && length <= rest.len() && rest[length - 1] == b'\n',
+                        "invalid PAX record length"
+                    );
+                    let field = &rest[space + 1..length - 1];
+                    let equals = field
+                        .iter()
+                        .position(|b| *b == b'=')
+                        .context("invalid PAX field")?;
+                    let key = &field[..equals];
+                    let value = &field[equals + 1..];
+                    ensure!(
+                        !key.starts_with(b"GNU.sparse."),
+                        "PAX sparse archives are unsupported"
+                    );
+                    if key == b"size" {
+                        pending_size = Some(std::str::from_utf8(value)?.parse::<u64>()?);
+                    }
+                    if key == b"path" || key == b"linkpath" {
+                        ensure!(value.len() <= 64 << 10, "PAX path exceeds 64 KiB");
+                    }
+                    rest = &rest[length..];
+                }
+            }
+        } else {
+            ensure!(
+                io::copy(&mut (&mut reader).take(size), &mut io::sink())? == size,
+                "truncated tar payload"
+            );
+        }
+        let padding = (512 - size % 512) % 512;
+        reader
+            .read_exact(&mut block[..padding as usize])
+            .context("truncated tar padding")?;
+    }
+}
+
 pub fn scan<F>(path: &Path, limits: Limits, mut visitor: F) -> Result<()>
 where
     F: FnMut(usize, &mut Entry<'_, PackageReader>) -> Result<()>,
@@ -170,6 +291,7 @@ impl Index {
     pub fn open(path: impl AsRef<Path>, limits: Limits) -> Result<Self> {
         let path = path.as_ref();
         let stat = path.metadata()?;
+        validate_container(path, limits)?;
         let mut index = Self {
             source: path.to_owned(),
             entries: vec![],
@@ -254,7 +376,19 @@ impl Index {
             Ok(())
         })?;
         let mut paths = BTreeSet::new();
+        let mut guids = BTreeSet::new();
+        let mut grouped_entries = BTreeMap::<String, Vec<usize>>::new();
+        for entry in &index.entries {
+            let group = entry.path.split('/').next().unwrap_or("");
+            grouped_entries
+                .entry(group.to_owned())
+                .or_default()
+                .push(entry.id);
+        }
         for (guid, (pathname, path)) in pathnames {
+            if !guids.insert(guid.to_lowercase()) {
+                index.error(format!("duplicate GUID (case alias): {guid}"));
+            }
             if !paths.insert(path.clone()) {
                 index.error(format!("duplicate resource pathname: {path}"));
             }
@@ -262,6 +396,14 @@ impl Index {
             let asset = lookup("asset");
             let meta = lookup("asset.meta");
             let preview = lookup("preview.png");
+            for id in [asset, meta, preview].into_iter().flatten() {
+                if index.entries[id].kind != "file" {
+                    index.error(format!(
+                        "resource component is not a regular file: {}",
+                        index.entries[id].path
+                    ));
+                }
+            }
             let info = metas.get(&guid);
             if let Some(info) = info {
                 if let Some(meta_guid) = &info.guid {
@@ -279,12 +421,7 @@ impl Index {
             if folder && asset.is_some_and(|id| index.entries[id].size > 0) {
                 index.error(format!("folder has nonempty asset payload: {path}"));
             }
-            let entries = index
-                .entries
-                .iter()
-                .filter(|e| e.path == guid || e.path.starts_with(&format!("{guid}/")))
-                .map(|e| e.id)
-                .collect();
+            let entries = grouped_entries.remove(&guid).unwrap_or_default();
             index.resources.push(Resource {
                 guid,
                 path,
@@ -333,6 +470,59 @@ impl Index {
             .map(|d| d.message.as_str())
             .collect();
         ensure!(errors.is_empty(), "invalid package:\n{}", errors.join("\n"));
+        self.ensure_logical_paths()?;
+        Ok(())
+    }
+    pub fn ensure_physical_valid(&self) -> Result<()> {
+        let mut names = BTreeSet::new();
+        for entry in &self.entries {
+            ensure!(
+                entry.path.is_empty() || names.insert(&entry.path),
+                "duplicate tar path: {}",
+                entry.path
+            );
+        }
+        Ok(())
+    }
+    fn ensure_logical_paths(&self) -> Result<()> {
+        let mut consumed = BTreeSet::new();
+        let mut targets = Vec::new();
+        for r in &self.resources {
+            targets.push((r.path.clone(), r.folder));
+            consumed.insert(r.pathname);
+            consumed.extend(r.asset);
+            consumed.extend(r.meta);
+            if r.meta.is_some() {
+                targets.push((format!("{}.meta", r.path), false));
+            }
+            for &id in &r.entries {
+                if self.entries[id].kind == "directory" && self.entries[id].path == r.guid {
+                    consumed.insert(id);
+                }
+            }
+        }
+        for entry in &self.entries {
+            if !entry.path.is_empty() && !consumed.contains(&entry.id) {
+                targets.push((entry.path.clone(), entry.kind == "directory"));
+            }
+        }
+        let mut names = BTreeMap::new();
+        for (path, directory) in &targets {
+            let key = crate::paths::fs_key(path);
+            if let Some(existing) = names.insert(key, *directory) {
+                ensure!(existing && *directory, "logical output collision: {path}");
+            }
+        }
+        for (path, _) in &targets {
+            for parent in Path::new(path).ancestors().skip(1) {
+                let key = crate::paths::fs_key(&parent.to_string_lossy().replace('\\', "/"));
+                ensure!(
+                    names.get(&key) != Some(&false),
+                    "file/directory collision: {}",
+                    parent.display()
+                );
+            }
+        }
         Ok(())
     }
     pub fn check_unchanged(&self) -> Result<()> {

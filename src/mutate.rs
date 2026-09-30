@@ -18,6 +18,7 @@ pub fn add(
     output: &Path,
     force: bool,
 ) -> Result<()> {
+    reject_symlinks(source)?;
     let additions = if let Some(entry) = &target.entry {
         let path = normalize(entry)?;
         ensure!(
@@ -181,6 +182,7 @@ pub fn validate_metadata(kind: &str, bytes: &[u8]) -> Result<()> {
         reader
             .next_frame(&mut buffer)
             .context("invalid PNG image data")?;
+        reader.finish().context("invalid PNG end chunks")?;
     }
     Ok(())
 }

@@ -21,7 +21,16 @@ pub struct Extraction {
 }
 
 pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<usize> {
-    index.ensure_valid()?;
+    if selection.raw
+        || (!selection.entries.is_empty()
+            && selection.paths.is_empty()
+            && selection.guids.is_empty()
+            && selection.globs.is_empty())
+    {
+        index.ensure_physical_valid()?;
+    } else {
+        index.ensure_valid()?;
+    }
     index.check_unchanged()?;
     let mut selected = BTreeMap::<usize, String>::new();
     let mut directories = BTreeSet::new();
@@ -54,7 +63,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
             consumed.extend(r.asset);
             consumed.extend(r.meta);
             for &id in &r.entries {
-                if index.entries[id].kind == "directory" {
+                if index.entries[id].kind == "directory" && index.entries[id].path == r.guid {
                     consumed.insert(id);
                 }
             }
@@ -106,16 +115,19 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
         }
     }
     for p in &paths {
-        ensure!(matched_paths.contains(p), "requested path not found: {p}");
+        if !matched_paths.contains(p) {
+            return Err(NoMatch(format!("requested path not found: {p}")).into());
+        }
     }
     for p in &entries {
-        ensure!(
-            matched_entries.contains(p),
-            "requested entry not found: {p}"
-        );
+        if !matched_entries.contains(p) {
+            return Err(NoMatch(format!("requested entry not found: {p}")).into());
+        }
     }
     for g in &selection.guids {
-        ensure!(matched_guids.contains(g), "requested GUID not found: {g}");
+        if !matched_guids.contains(g) {
+            return Err(NoMatch(format!("requested GUID not found: {g}")).into());
+        }
     }
     if selected.is_empty() && directories.is_empty() {
         return Err(NoMatch("no entries selected".into()).into());

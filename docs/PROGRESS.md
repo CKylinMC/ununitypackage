@@ -4,8 +4,8 @@ Updated: 2026-09-30 (Asia/Shanghai). Baseline: 0ea8d40.
 
 ## Current goal
 
-M6: harden archive boundaries, expand interoperability checks, document usage and
-run native platform CI. M0–M5 initial implementation is in place.
+M6: run native platform CI and public-fixture compatibility checks. M0–M5 are
+implemented; hardening, interoperability and usage documentation are complete.
 
 ## Completed
 
@@ -20,15 +20,23 @@ run native platform CI. M0–M5 initial implementation is in place.
   selection, no-temp reads, CRC/truncation, safe paths, mutation preservation,
   long names/PAX attributes, both UPM layouts and stable generated GUIDs.
 - cargo fmt, cargo test --locked and strict clippy pass on Linux.
+- Functional checkpoint 6c8cf2a pushed and verified.
+- 29 regressions now pass, including extension bounds, trailing-data rejection,
+  PAX size overrides, long links, malformed PNG, raw recovery and case-alias GUIDs.
+- Independent Python tarfile USTAR/GNU/local-PAX read/repack/extract checks pass.
+- Original tar names (including ./), supported attributes and long link targets
+  are preserved. Empty unknown directories are retained.
+- README documents every command, compatibility boundaries and migration.
+- .NET sources/projects archived under legacy/dotnet; Rust is the primary project.
+- Native three-platform CI and Rust 1.88 minimum job configured, awaiting remote runs.
 
 ## Validation and limitations
 
-No actual failing user package was provided. Additional archive-extension limits,
-independent Python interoperability and public-fixture checks remain to be run.
+No actual failing user package was provided. Public fixture checks remain to run.
 Unity import checks: NOT RUN (no Editor in this environment).
 Native macOS/Windows checks will run through GitHub Actions.
 
 ## Next action
 
-Save this functional checkpoint, then harden extended tar metadata/trailing data,
-add cross-platform CI and README, and validate native runner results.
+Push this checkpoint, inspect GitHub Actions jobs and fix any native failures.
+Validate public Unity-generated fixtures, update results and push final progress.

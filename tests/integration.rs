@@ -668,14 +668,287 @@ fn generated_metadata_is_stable_across_repeated_builds_and_content_edits() {
     pack::pack(&source, &first, &options, Limits::default()).unwrap();
     fs::write(source.join("file.txt"), b"two").unwrap();
     pack::pack(&source, &second, &options, Limits::default()).unwrap();
+    let a = index(&first);
+    let b = index(&second);
+    let guid = &a
+        .resources
+        .iter()
+        .find(|r| r.path == "Assets/Demo/file.txt")
+        .unwrap()
+        .guid;
     assert_eq!(
-        index(&first).resources[0].guid,
-        index(&second).resources[0].guid
+        guid,
+        &b.resources
+            .iter()
+            .find(|r| r.path == "Assets/Demo/file.txt")
+            .unwrap()
+            .guid
     );
-    let guid = &index(&first).resources[0].guid;
     assert_eq!(
         contents(&first)[&format!("{guid}/asset.meta")],
         contents(&second)[&format!("{guid}/asset.meta")]
     );
     assert!(!source.join("file.txt.meta").exists());
+}
+
+#[test]
+fn numeric_and_scientific_looking_guids_keep_all_32_digits() {
+    for guid in [
+        "00000000000000000000000000000000",
+        "00000000000000000000000000000001",
+        "000000000000000000000000000000e1",
+    ] {
+        let dir = TempDir::new().unwrap();
+        let package = fixture(dir.path(), record(guid, "Assets/file", Some(b"x"), false));
+        index(&package).ensure_valid().unwrap();
+        assert_eq!(index(&package).resources[0].guid, guid);
+    }
+}
+#[test]
+fn raw_extraction_can_recover_semantically_invalid_resources() {
+    let dir = TempDir::new().unwrap();
+    let package = fixture(
+        dir.path(),
+        vec![
+            (format!("{A}/pathname"), b"../unsafe-logical-path".to_vec()),
+            (format!("{A}/asset"), b"recover me".to_vec()),
+        ],
+    );
+    let out = dir.path().join("raw");
+    ok(run(&["extract", path(&package), "--raw", "-o", path(&out)]));
+    assert_eq!(
+        fs::read(out.join(format!("{A}/asset"))).unwrap(),
+        b"recover me"
+    );
+    assert!(!dir.path().join("unsafe-logical-path").exists());
+}
+#[test]
+fn nonzero_trailing_data_and_oversized_extension_are_rejected_before_allocation() {
+    use std::io::Write;
+    let dir = TempDir::new().unwrap();
+    let package = fixture(dir.path(), record(A, "Assets/file", Some(b"x"), false));
+    let mut tar = vec![];
+    GzDecoder::new(File::open(&package).unwrap())
+        .read_to_end(&mut tar)
+        .unwrap();
+    tar.extend_from_slice(b"hidden content");
+    let mut gzip = GzEncoder::new(File::create(&package).unwrap(), Compression::default());
+    gzip.write_all(&tar).unwrap();
+    gzip.finish().unwrap();
+    assert!(Index::open(&package, Limits::default()).is_err());
+    let mut header = Header::new_gnu();
+    header.set_path("long").unwrap();
+    header.set_entry_type(tar::EntryType::new(b'L'));
+    header.set_size(1 << 30);
+    header.set_cksum();
+    let mut gzip = GzEncoder::new(File::create(&package).unwrap(), Compression::default());
+    gzip.write_all(header.as_bytes()).unwrap();
+    gzip.finish().unwrap();
+    let error = Index::open(&package, Limits::default()).unwrap_err();
+    assert!(error.to_string().contains("metadata exceeds"));
+}
+#[test]
+fn directory_and_long_link_records_preserve_names_and_targets() {
+    let dir = TempDir::new().unwrap();
+    let package = dir.path().join("links");
+    let target = "path/".repeat(60);
+    let mut builder = Builder::new(GzEncoder::new(
+        File::create(&package).unwrap(),
+        Compression::default(),
+    ));
+    let mut header = Header::new_gnu();
+    header.set_size(0);
+    header.set_mode(0o755);
+    header.set_entry_type(tar::EntryType::Directory);
+    builder
+        .append_data(&mut header, "extras/empty", Cursor::new([]))
+        .unwrap();
+    header.set_entry_type(tar::EntryType::Symlink);
+    builder
+        .append_link(&mut header, "extras/link", &target)
+        .unwrap();
+    builder.into_inner().unwrap().finish().unwrap();
+    let out = dir.path().join("repacked");
+    write::rewrite(&index(&package), &out, false, &BTreeMap::new(), &[]).unwrap();
+    let mut archive = Archive::new(GzDecoder::new(File::open(out).unwrap()));
+    let links: Vec<_> = archive
+        .entries()
+        .unwrap()
+        .map(|e| {
+            let e = e.unwrap();
+            (
+                e.path_bytes().into_owned(),
+                e.link_name_bytes().map(|l| l.into_owned()),
+            )
+        })
+        .collect();
+    assert!(links.contains(&(b"extras/link".to_vec(), Some(target.into_bytes()))));
+    let extracted = dir.path().join("extract");
+    assert!(extract::extract(&index(&package), &extracted, &Extraction::default()).is_err());
+    assert!(!extracted.exists());
+}
+#[test]
+fn unknown_empty_directory_inside_resource_group_is_not_discarded() {
+    let dir = TempDir::new().unwrap();
+    let package = dir.path().join("directories");
+    let mut builder = Builder::new(GzEncoder::new(
+        File::create(&package).unwrap(),
+        Compression::default(),
+    ));
+    for (name, bytes) in record(A, "Assets/file", Some(b"x"), false) {
+        let mut h = Header::new_gnu();
+        h.set_size(bytes.len() as u64);
+        h.set_mode(0o644);
+        builder
+            .append_data(&mut h, name, Cursor::new(bytes))
+            .unwrap();
+    }
+    let mut h = Header::new_gnu();
+    h.set_size(0);
+    h.set_mode(0o755);
+    h.set_entry_type(tar::EntryType::Directory);
+    builder
+        .append_data(&mut h, format!("{A}/custom-empty"), Cursor::new([]))
+        .unwrap();
+    builder.into_inner().unwrap().finish().unwrap();
+    let out = dir.path().join("out");
+    extract::extract(&index(&package), &out, &Extraction::default()).unwrap();
+    assert!(out.join(format!("{A}/custom-empty")).is_dir());
+}
+#[test]
+fn pax_size_override_and_replacement_keep_valid_alignment() {
+    let dir = TempDir::new().unwrap();
+    let package = dir.path().join("pax-size");
+    let mut builder = Builder::new(GzEncoder::new(
+        File::create(&package).unwrap(),
+        Compression::default(),
+    ));
+    builder
+        .append_pax_extensions([
+            ("size", b"3".as_slice()),
+            ("vendor.key", b"keep".as_slice()),
+        ])
+        .unwrap();
+    let mut header = Header::new_ustar();
+    header.set_path("extras/file").unwrap();
+    header.set_mode(0o644);
+    header.set_size(0);
+    header.set_cksum();
+    builder.append(&header, Cursor::new(b"abc")).unwrap();
+    builder.into_inner().unwrap().finish().unwrap();
+    let repacked = dir.path().join("repacked");
+    write::rewrite(&index(&package), &repacked, false, &BTreeMap::new(), &[]).unwrap();
+    assert_eq!(contents(&repacked)["extras/file"], b"abc");
+    let new = dir.path().join("new");
+    fs::write(&new, b"longer replacement").unwrap();
+    let replaced = dir.path().join("replaced");
+    mutate::replace(
+        &index(&package),
+        &new,
+        &Selector {
+            entry: Some("extras/file".into()),
+            ..Default::default()
+        },
+        &replaced,
+        false,
+    )
+    .unwrap();
+    assert_eq!(contents(&replaced)["extras/file"], b"longer replacement");
+}
+#[test]
+fn raw_add_replace_remove_do_not_touch_resources() {
+    let dir = TempDir::new().unwrap();
+    let package = fixture(dir.path(), record(A, "Assets/a", Some(b"a"), false));
+    let file = dir.path().join("file");
+    fs::write(&file, b"one").unwrap();
+    let added = dir.path().join("added");
+    ok(run(&[
+        "add",
+        path(&package),
+        path(&file),
+        "--entry",
+        "extra/data",
+        "-o",
+        path(&added),
+    ]));
+    fs::write(&file, b"two").unwrap();
+    let replaced = dir.path().join("replaced");
+    ok(run(&[
+        "replace",
+        path(&added),
+        path(&file),
+        "--entry",
+        "extra/data",
+        "-o",
+        path(&replaced),
+    ]));
+    assert_eq!(contents(&replaced)["extra/data"], b"two");
+    let removed = dir.path().join("removed");
+    ok(run(&[
+        "remove",
+        path(&replaced),
+        "--entry",
+        "extra/data",
+        "-o",
+        path(&removed),
+    ]));
+    assert_eq!(contents(&removed), contents(&package));
+}
+#[test]
+fn malformed_png_end_and_invalid_manifest_leave_no_output() {
+    let mut data = png();
+    data.truncate(data.len() - 10);
+    assert!(mutate::validate_metadata("icon", &data).is_err());
+    assert!(mutate::validate_metadata("manifest", b"{\"dependencies\":{\"com.bad\":42}}").is_err());
+}
+#[test]
+fn case_aliased_guids_and_file_directory_conflicts_are_invalid() {
+    let dir = TempDir::new().unwrap();
+    let lower = "abcdefabcdefabcdefabcdefabcdefab";
+    let mut entries = record(lower, "Assets/a", Some(b"one"), false);
+    entries.extend(record(
+        &lower.to_uppercase(),
+        "Assets/b",
+        Some(b"two"),
+        false,
+    ));
+    let package = fixture(dir.path(), entries);
+    assert!(index(&package).ensure_valid().is_err());
+    let mut entries = record(A, "Assets/file", Some(b"one"), false);
+    entries.extend(record(B, "Assets/file/child", Some(b"two"), false));
+    let package = fixture(dir.path(), entries);
+    assert!(index(&package).ensure_valid().is_err());
+}
+#[test]
+fn find_regex_part_selection_json_reports_and_build_alias_work() {
+    let dir = TempDir::new().unwrap();
+    let package = fixture(
+        dir.path(),
+        record(A, "Assets/a.cs", Some(b"class A {}"), false),
+    );
+    let result = ok(run(&[
+        "find",
+        path(&package),
+        r"\.cs$",
+        "--regex",
+        "--json",
+    ]));
+    let items: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(items.as_array().unwrap().len(), 1);
+    assert_eq!(
+        ok(run(&["cat", path(&package), "--guid", A, "--part", "meta"])).stdout,
+        meta(A, false)
+    );
+    let source = dir.path().join("source");
+    fs::create_dir(&source).unwrap();
+    fs::write(source.join("a.cs"), b"class A {}").unwrap();
+    fs::write(source.join("a.cs.meta"), meta(A, false)).unwrap();
+    let built = dir.path().join("built");
+    ok(run(&["build", path(&source), path(&built)]));
+    let out = dir.path().join("repacked");
+    let report = ok(run(&["repack", path(&built), "-o", path(&out), "--json"]));
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&report.stdout).unwrap()["success"],
+        true
+    );
 }

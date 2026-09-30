@@ -39,8 +39,13 @@ entries were omitted. An empty folder produced its meta but not the directory.
 These cases become Rust regressions. The README's duplicate-resource report has
 not been reproduced in Unity; its root cause remains unknown.
 
-Reader support: gzip, USTAR, GNU long names and PAX. Record original tar names and
+Reader support: gzip, USTAR, GNU long names and local PAX. Record original tar names and
 effective headers. Safe lookup normalization must not silently rewrite unchanged
 records. Long physical entry names require extension records when writing.
 Gzip filename/comment/extra headers are container metadata and may be regenerated;
 the package's tar contents are the preservation contract.
+
+Global PAX and GNU/PAX sparse archives are explicitly rejected. A bounded physical
+record validation pass runs before the tar library interprets extended headers.
+It verifies two end blocks, zero-only padding, extension sizes and full gzip CRC.
+This avoids allocating unbounded extension metadata or dropping hidden trailing data.
