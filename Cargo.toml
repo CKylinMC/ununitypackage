@@ -1,0 +1,36 @@
+[package]
+name = "uup-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "ununitypackage-cli: inspect, extract, edit and create Unity packages"
+license = "WTFPL"
+repository = "https://github.com/CKylinMC/ununitypackage"
+
+[lib]
+name = "uup_cli"
+
+[[bin]]
+name = "uup-cli"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+globset = "0.4"
+png = "0.18"
+regex = "1"
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tar = "0.4"
+tempfile = "3"
+unicode-normalization = "0.1"
+uuid = { version = "1", features = ["v5"] }
+walkdir = "2"
+yaml-rust2 = "0.11"
+
+[profile.release]
+lto = "thin"
+strip = true
