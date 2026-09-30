@@ -3,6 +3,21 @@
 Run cargo fmt --check, cargo clippy --all-targets -- -D warnings and cargo test
 --locked. Use native ubuntu, macOS and Windows CI; build release artifacts there.
 Test supported minimum Rust separately if a rust-version is declared.
+The release workflow runs these checks on v* tag pushes; ordinary commits and PRs
+no longer trigger automatic builds. Before tagging, run the relevant checks locally.
+
+Release-specific verification uses:
+
+```sh
+python -m unittest discover -s scripts -p 'test_release.py' -v
+python scripts/release.py metadata --tag v2.0.0
+```
+
+It covers stable/build-metadata tags, standard and legacy dotted prereleases,
+invalid tags, Cargo/lock mismatch, native archive contents/executable mode,
+checksums, corruption and incomplete platform assets. After native builds, the
+workflow checks the actual compiled binary version before bundling and gates
+publication on all native and minimum-toolchain jobs. See RELEASING.md.
 
 Fixtures are generated with explicit entry order and payload bytes. Regression
 coverage includes text/binary/empty assets, folders, missing metas, non-Assets

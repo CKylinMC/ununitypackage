@@ -29,5 +29,9 @@ At each milestone, or after about 10–15 minutes of sustained implementation:
 
 Checkpoint before long CI waits/builds. A local commit without a successful push
 is not recoverable from a recycled worker; report any push failure immediately.
-Do not commit binaries, target caches or private packages. No automatic master
-merge, version tag, registry publication or release publication is required.
+Do not commit binaries, target caches or private packages. Ordinary development
+does not merge master, publish registry packages or create version tags. For a
+user-requested release, follow AGENTS.md and RELEASING.md: update the version,
+validate, push the release commit, then push its annotated v* tag. The tag alone
+triggers native checks and automatic GitHub Release publication; branch pushes
+do not build. Record release/tag SHAs and the Actions outcome before continuing.

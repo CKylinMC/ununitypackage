@@ -1,20 +1,50 @@
-name: Rust CI
+name: Release
 on:
   push:
-    branches: [next, master]
-  pull_request:
-  workflow_dispatch:
+    tags: ['v*']
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  metadata:
+    name: Validate release version
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s scripts -p 'test_release.py' -v
+      - id: version
+        name: Check tag, Cargo.toml and Cargo.lock
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python scripts/release.py metadata --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
+
   native:
     name: ${{ matrix.os }}
+    needs: metadata
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+          - os: macos-latest
+            platform: macos
+            arch: aarch64
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +53,7 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.12'
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked
@@ -32,20 +62,22 @@ jobs:
         run: python scripts/interoperability.py target/release/uup
       - if: runner.os == 'Windows'
         run: python scripts/interoperability.py target/release/uup.exe
+      - name: Bundle release and checksum
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: python scripts/release.py bundle --tag "$RELEASE_TAG" --platform "$RELEASE_PLATFORM" --arch "$RELEASE_ARCH" --output dist
       - uses: actions/upload-artifact@v4
         with:
-          name: uup-cli-${{ runner.os }}-${{ runner.arch }}
-          path: |
-            target/release/uup
-            target/release/uup.exe
-            README.md
-            SKILL.md
-            docs/USAGE.md
-            LICENSE
+          name: release-uup-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*
           if-no-files-found: error
 
   msrv:
     name: Rust 1.88 minimum
+    needs: metadata
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,3 +85,43 @@ jobs:
         with:
           toolchain: '1.88.0'
       - run: cargo test --locked
+
+  publish:
+    name: Publish GitHub Release
+    needs: [metadata, native, msrv]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-uup-*
+          merge-multiple: true
+          path: dist
+      - name: Verify all platform assets and checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python scripts/release.py verify-dist --tag "$RELEASE_TAG" --output dist
+      - name: Create release with generated notes or update existing assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+            gh release edit "$RELEASE_TAG" --prerelease="$RELEASE_PRERELEASE"
+          else
+            release_options=()
+            if [ "$RELEASE_PRERELEASE" = true ]; then
+              release_options+=(--prerelease --latest=false)
+            fi
+            gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes --title "$RELEASE_TAG" "${release_options[@]}"
+          fi

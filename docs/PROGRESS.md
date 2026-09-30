@@ -1,6 +1,6 @@
 # Progress
 
-Updated: 2026-10-01 (Asia/Shanghai). Branch: next. Version: uup-cli 0.1.0.
+Updated: 2026-10-01 (Asia/Shanghai). Branch: next. Version: uup-cli 2.0.0.
 Original baseline: 0ea8d40.
 
 ## Status
@@ -9,6 +9,26 @@ M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage
 guide and binary-name correction are complete and have passed native CI.
 Actual Unity Editor import remains a separate unrun gate.
+
+## Current goal: 2.0.0 tag-triggered release
+
+The original remote v1.0.0 release was confirmed. Cargo.toml/Cargo.lock and
+versioned examples now use 2.0.0. AGENTS.md and RELEASING.md persist the user's
+future release policy: use specified versions first, otherwise select by SemVer
+scope or clarify uncertainty, and synchronize versions/tags before publication.
+
+Actions now triggers only on v* tags. It validates version alignment, classifies
+SemVer and legacy alpha/beta/rc suffixes, runs native/MSRV checks, bundles root
+uup/uup.exe with docs and checksums, then generates notes and publishes a Release.
+Regular branch/PR pushes no longer build. Local validation passed: 7 release tests,
+stable/prerelease/re-run publisher argument checks, workflow structure, docs links,
+32 Rust regressions, format, strict clippy, release build and three independent
+tar formats. The actual binary reports uup 2.0.0; the Linux release bundle has
+the root executable with 0755 mode, all documents and a SHA-256 companion.
+
+Next action: commit/push next, create/push annotated v2.0.0 on the exact release
+commit, then verify remote native jobs and Release assets. No release/tag is
+claimed published yet.
 
 ## Delivered
 

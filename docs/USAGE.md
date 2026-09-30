@@ -1,6 +1,6 @@
 # uup-cli 使用文档与旧版迁移
 
-适用于项目 `uup-cli 0.1.0`（`next` 分支），全称 `ununitypackage-cli`。
+适用于项目 `uup-cli 2.0.0`，全称 `ununitypackage-cli`。Rust 版本线从 2.0.0 承接原 .NET 的 1.0.0。
 安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
 工具直接处理 `.unitypackage` 的 gzip/tar 内容，可查看、解包、修改和打包，运行时无需 Unity Editor、.NET 或系统 `tar`。
 
@@ -9,7 +9,7 @@
 使用 Rust 1.88 或更新版本安装：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --branch next --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
 uup --version
 uup --help
 ```
@@ -22,8 +22,8 @@ cargo build --release --locked
 ```
 
 Windows PowerShell 对应可执行文件为 `./target/release/uup.exe`。
-也可以下载 [已通过三平台验证的 GitHub Actions 构建产物](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)，解压后将可执行文件所在目录加入 `PATH`。
-产物中的可执行文件位于 `target/release/uup` 或 `target/release/uup.exe`，附带 README、`docs/USAGE.md` 和 LICENSE。
+也可以下载 [GitHub Releases](https://github.com/CKylinMC/ununitypackage/releases) 中的平台压缩包，解压后将可执行文件所在目录加入 `PATH`。
+Release 压缩包根目录直接包含 `uup` 或 `uup.exe`，附带 README、SKILL.md、LICENSE 和使用/发布文档；同名 `.sha256` 可用于校验下载内容。
 现有原生 CI 产物为 Linux x64、macOS ARM64 和 Windows x64；Intel macOS 可从源码构建，本次没有对应原生 runner 验证。
 macOS/Linux 手动下载后，进入可执行文件所在目录，如文件没有执行权限，可运行 `chmod +x ./uup`。
 
@@ -365,6 +365,7 @@ uup --max-expanded-bytes 137438953472 info large.unitypackage
 三平台归档/CLI 测试已通过。Unity 2022.3 LTS 和 Unity 6 的真实 Editor 导入尚未验证，
 包括 UI 图标、依赖解析、importer、资源引用和旧版提到的重复资源问题。
 实际导入验收见 [TESTING.md](TESTING.md)，不能以 CLI 往返结果代替 Editor 验证。
+本项目只在推送 `v*` tag 时自动构建并发布，发版规则见 [RELEASING.md](RELEASING.md)。
 
 ## 11. 与旧版的使用区别
 

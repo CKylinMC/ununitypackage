@@ -4,16 +4,17 @@
 支持 macOS、Linux 和 Windows；使用纯 Rust gzip/tar，不依赖系统 tar 或 .NET。
 
 项目和 Cargo 包名为 `uup-cli`；安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
+Rust 版本线从 **2.0.0** 开始，承接原 .NET 的 1.0.0。
 
 完整操作示例、参数说明和旧版迁移对照见 [使用文档](docs/USAGE.md)。
 Agent 的命令选择、操作流程、程序调用示例和校验规则见 [SKILL.md](SKILL.md)。
 
 ## 安装 / 构建
 
-需要 Rust 1.88 或更新版本。直接安装当前 `next` 分支：
+需要 Rust 1.88 或更新版本。安装 `v2.0.0`：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --branch next --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
 ```
 
 或在仓库内构建：
@@ -23,11 +24,13 @@ cargo build --release --locked
 ./target/release/uup --help
 ```
 
-Windows 可运行 `target\release\uup.exe`。GitHub Actions 的 Rust CI 在三个
-原生平台测试并生成可下载的构建 artifacts（包含可执行文件、README、使用文档和 LICENSE）。
+Windows 可运行 `target\release\uup.exe`。预编译版本从 [GitHub Releases](https://github.com/CKylinMC/ununitypackage/releases) 下载，
+解压后根目录包含可执行文件、README、SKILL.md、使用/发布文档和 LICENSE。
+平台为 Linux x64、macOS ARM64、Windows x64；Intel macOS 可从源码构建，尚无对应原生 runner 验证。
 
-[已通过的三平台 CI 与构建产物](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)：
-Linux x64、macOS ARM64、Windows x64。Intel macOS 可从源码构建，本次没有对应原生 runner 验证。
+Actions 只在推送 `v*` tag 时进行三平台检查、构建和自动发布，自动生成发布说明；
+SemVer 预发布及兼容的 `.alpha`、`.beta`、`.beta-1` 后缀标为 pre-release。
+版本选择、tag 对齐和重跑规则见 [发布文档](docs/RELEASING.md) 与 [AGENTS.md](AGENTS.md)。
 
 ## 查看与查找（不落盘）
 

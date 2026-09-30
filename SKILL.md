@@ -6,7 +6,7 @@ description: 使用 uup 检查、查找、查看、解包、创建和修改 Unit
 # 使用 uup 操作 Unity 包
 
 项目/Cargo 包名是 `uup-cli`（ununitypackage-cli）；命令是 `uup`，Windows 可执行文件是 `uup.exe`。
-本文适用于 0.1.0。运行时无需 Unity Editor、.NET 或系统 tar。
+本文适用于 2.0.0。运行时无需 Unity Editor、.NET 或系统 tar。
 
 ## 准备工具
 
@@ -20,12 +20,12 @@ uup --help
 如果未安装且任务需要使用工具，按环境权限安装；已有可执行文件时直接使用：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --branch next --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
 ```
 
 源码构建需要 Rust 1.88 或更新版本。在仓库内运行 `cargo build --release --locked`，
 然后使用 `./target/release/uup` 或 `./target/release/uup.exe`。
-下载构建产物时，可执行文件也位于 `target/release/`。
+从 GitHub Releases 下载平台压缩包时，解压后的根目录直接包含可执行文件。
 macOS/Linux 如缺少执行权限，对下载的可执行文件使用 `chmod +x`。
 后续示例假定命令已加入 PATH；否则用实际可执行文件路径替换 `uup`。
 参数以当前版本的 `uup COMMAND --help` 为准。
@@ -270,3 +270,5 @@ Unity 2022.3 LTS / Unity 6 的图标 UI、importer、依赖及引用验收另行
 
 仓库内的详细资料：[使用文档](docs/USAGE.md)、[CLI 契约](docs/SPEC.md)、
 [格式说明](docs/FORMAT.md)、[Unity 导入验收](docs/TESTING.md)。
+发布本项目时遵循 [AGENTS.md](AGENTS.md) 的版本选择规则与 [发布步骤](docs/RELEASING.md)，
+同步更新版本和 tag；普通工具使用不创建发布 tag。
