@@ -7,7 +7,7 @@ Original baseline: 0ea8d40.
 
 M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage
-guide and binary-name correction are being validated as a follow-up.
+guide and binary-name correction are complete and have passed native CI.
 Actual Unity Editor import remains a separate unrun gate.
 
 ## Delivered
@@ -45,15 +45,18 @@ bin/uup, with version/help named uup. Forty one-time usage workflow invocations
 passed, including build/cover migration, selectors, mutation and both UPM layouts;
 documentation links were checked.
 
-Next action: commit/push next, then check the new native build artifacts. The
-successful CI recorded below predates this binary-name correction and is the
-baseline result.
+Follow-up commit 3cbd5cb was pushed and its remote SHA verified. Linux, macOS,
+Windows and Rust 1.88 jobs all passed in the native run recorded below. GitHub's
+API confirms all three artifacts are available. Native interoperability commands
+execute uup / uup.exe, and upload paths include those binaries and USAGE.md.
+Direct ZIP inspection from this cloud host was unavailable (artifact download
+returned HTTP 403); no claim of downloaded-binary inspection is made.
 
 ## Verified
 
-Tested implementation commit: 79399b2f57f8bc65b58e2ef2691f34d6ec4d073f.
+Tested implementation commit: 3cbd5cb4f953cab5cce7966facda27245c7b6386.
 
-[Successful native CI run](https://github.com/CKylinMC/ununitypackage/actions/runs/36724536480)
+[Successful native CI run](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)
 
 | Job | Result |
 | --- | --- |
@@ -63,7 +66,8 @@ Tested implementation commit: 79399b2f57f8bc65b58e2ef2691f34d6ec4d073f.
 | Rust 1.88 minimum | PASS: regressions |
 
 Verified downloadable artifacts: uup-cli-Linux-X64, uup-cli-macOS-ARM64 and
-uup-cli-Windows-X64. Each contains the executable, README and LICENSE.
+uup-cli-Windows-X64. Upload paths are target/release/uup or target/release/uup.exe,
+README, docs/USAGE.md and LICENSE.
 
 Local Linux validation: 32 integration regressions pass; cargo fmt --check,
 strict clippy, release build and independent Python USTAR/GNU/local-PAX checks
@@ -90,9 +94,10 @@ committed; regression fixtures are generated from explicit test data.
 
 ## Checkpoints and continuation
 
-Implementation checkpoints f356462, 6c8cf2a, d7812e5, bf52144 and 79399b2 were
-committed, pushed and checked against remote SHAs. The final documentation
-checkpoint records the successful CI result and changes no implementation code.
+Implementation checkpoints f356462, 6c8cf2a, d7812e5, bf52144, 79399b2 and 3cbd5cb
+were committed, pushed and checked against remote SHAs. Documentation checkpoint
+683b087 recorded the original CI result. The latest documentation checkpoint
+records the renamed binary's successful CI and changes no implementation code.
 
 For subsequent work, follow CLOUD-RUNBOOK.md: inspect local/remote state and this
 file before changing anything. The next independent validation task is the Unity

@@ -22,9 +22,10 @@ cargo build --release --locked
 ```
 
 Windows PowerShell 对应可执行文件为 `./target/release/uup.exe`。
-也可以下载 [GitHub Actions 中 next 分支的构建产物](https://github.com/CKylinMC/ununitypackage/actions/workflows/ci.yml?query=branch%3Anext)，解压后将可执行文件所在目录加入 `PATH`。
+也可以下载 [已通过三平台验证的 GitHub Actions 构建产物](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)，解压后将可执行文件所在目录加入 `PATH`。
+产物中的可执行文件位于 `target/release/uup` 或 `target/release/uup.exe`，附带 README、`docs/USAGE.md` 和 LICENSE。
 现有原生 CI 产物为 Linux x64、macOS ARM64 和 Windows x64；Intel macOS 可从源码构建，本次没有对应原生 runner 验证。
-macOS/Linux 手动下载后，如文件没有执行权限，可运行 `chmod +x ./uup`。
+macOS/Linux 手动下载后，进入可执行文件所在目录，如文件没有执行权限，可运行 `chmod +x ./uup`。
 
 先查看和校验，再解包到独立目录：
 

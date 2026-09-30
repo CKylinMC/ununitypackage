@@ -37,13 +37,16 @@ environments without an Editor, record this gate as NOT RUN.
 
 ## Recorded implementation validation
 
-Implementation commit 79399b2f57f8bc65b58e2ef2691f34d6ec4d073f passed
-[native CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36724536480)
+Implementation commit 3cbd5cb4f953cab5cce7966facda27245c7b6386 passed
+[native CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)
 on Linux, macOS and Windows, and the Rust 1.88 minimum-toolchain job. Native jobs
 run format checking, strict clippy, regression tests, release builds and the
 independent Python USTAR/GNU/local-PAX interoperability script. Linux has 32
 integration regressions; platform-specific cases run on the corresponding hosts.
 
 The run provides uup-cli-Linux-X64, uup-cli-macOS-ARM64 and uup-cli-Windows-X64
-artifacts containing the executable, README and LICENSE. Intel macOS has not had
-native-runner validation. Unity Editor import remains NOT RUN.
+artifacts with target/release/uup (macOS/Linux) or target/release/uup.exe (Windows),
+README, docs/USAGE.md and LICENSE. The project/Cargo package is still uup-cli.
+An offline local installation also confirmed bin/uup and uup help/version output;
+40 one-time usage workflow invocations passed. Intel macOS has not had native-runner
+validation. Unity Editor import remains NOT RUN.

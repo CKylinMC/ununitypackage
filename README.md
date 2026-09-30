@@ -25,7 +25,7 @@ cargo build --release --locked
 Windows 可运行 `target\release\uup.exe`。GitHub Actions 的 Rust CI 在三个
 原生平台测试并生成可下载的构建 artifacts（包含可执行文件、README、使用文档和 LICENSE）。
 
-[next 分支的三平台 CI 与构建产物](https://github.com/CKylinMC/ununitypackage/actions/workflows/ci.yml?query=branch%3Anext)：
+[已通过的三平台 CI 与构建产物](https://github.com/CKylinMC/ununitypackage/actions/runs/36746557879)：
 Linux x64、macOS ARM64、Windows x64。Intel macOS 可从源码构建，本次没有对应原生 runner 验证。
 
 ## 查看与查找（不落盘）
