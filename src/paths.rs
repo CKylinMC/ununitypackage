@@ -7,8 +7,10 @@ pub fn normalize(path: &str) -> Result<String> {
     ensure!(!path.is_empty(), "empty path");
     let path = path.replace('\\', "/");
     ensure!(!path.starts_with('/'), "absolute path: {path}");
+    let drive_prefix =
+        path.as_bytes().get(1) == Some(&b':') && path.as_bytes()[0].is_ascii_alphabetic();
     ensure!(
-        !path.contains(':') && !path.chars().any(|c| c.is_control()),
+        !drive_prefix && !path.chars().any(|c| c.is_control()),
         "invalid path: {path:?}"
     );
     let mut parts = Vec::new();
@@ -20,6 +22,11 @@ pub fn normalize(path: &str) -> Result<String> {
         }
     }
     ensure!(!parts.is_empty(), "empty normalized path: {path}");
+    let first = parts[0].as_bytes();
+    ensure!(
+        !(first.get(1) == Some(&b':') && first[0].is_ascii_alphabetic()),
+        "drive-relative path: {path}"
+    );
     Ok(parts.join("/"))
 }
 
@@ -37,7 +44,7 @@ pub fn check_host_path(path: &str) -> Result<()> {
     if cfg!(windows) {
         for part in path.split('/') {
             ensure!(
-                !part.ends_with(['.', ' ']) && !part.contains(['<', '>', '"', '|', '?', '*']),
+                !part.ends_with(['.', ' ']) && !part.contains(['<', '>', ':', '"', '|', '?', '*']),
                 "Windows cannot represent path component: {part}"
             );
             let stem = part.split('.').next().unwrap_or("").to_uppercase();
@@ -65,6 +72,24 @@ pub fn reject_symlinks(path: &Path) -> Result<()> {
         current.push(component);
         match std::fs::symlink_metadata(&current) {
             Ok(meta) => {
+                // macOS intentionally routes these system directories through /private.
+                // Only the exact OS aliases with their expected targets are trusted.
+                #[cfg(target_os = "macos")]
+                if meta.file_type().is_symlink() {
+                    let expected = match current.to_str() {
+                        Some("/var") => Some("/private/var"),
+                        Some("/tmp") => Some("/private/tmp"),
+                        Some("/etc") => Some("/private/etc"),
+                        _ => None,
+                    };
+                    if let Some(expected) = expected {
+                        ensure!(
+                            current.canonicalize()? == Path::new(expected),
+                            "unexpected macOS system alias"
+                        );
+                        continue;
+                    }
+                }
                 ensure!(
                     !meta.file_type().is_symlink(),
                     "refusing symlink path: {}",

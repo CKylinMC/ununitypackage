@@ -952,3 +952,56 @@ fn find_regex_part_selection_json_reports_and_build_alias_work() {
         true
     );
 }
+
+#[test]
+fn posix_filenames_are_inspectable_on_every_platform() {
+    let dir = TempDir::new().unwrap();
+    let package = fixture(
+        dir.path(),
+        record(A, "Assets/name:with?chars.txt", Some(b"inspect me"), false),
+    );
+    ok(run(&["list", path(&package), "--json"]));
+    assert_eq!(
+        ok(run(&[
+            "cat",
+            path(&package),
+            "--path",
+            "Assets/name:with?chars.txt"
+        ]))
+        .stdout,
+        b"inspect me"
+    );
+    let out = dir.path().join("out");
+    let result = extract::extract(&index(&package), &out, &Extraction::default());
+    if cfg!(windows) {
+        assert!(result.is_err());
+        assert!(!out.exists());
+    } else {
+        result.unwrap();
+    }
+}
+
+#[test]
+fn drive_and_unc_paths_cannot_hide_behind_dot_prefixes() {
+    for path in [
+        "C:/outside",
+        "./C:/outside",
+        "././c:relative",
+        "\\\\host\\share",
+        "/absolute",
+        "Assets/../outside",
+    ] {
+        assert!(
+            uup_cli::paths::normalize(path).is_err(),
+            "accepted unsafe path: {path}"
+        );
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_system_directory_aliases_are_allowed() {
+    for system in ["/var", "/tmp", "/etc"] {
+        uup_cli::paths::reject_symlinks(Path::new(system)).unwrap();
+    }
+}

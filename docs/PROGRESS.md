@@ -4,7 +4,7 @@ Updated: 2026-09-30 (Asia/Shanghai). Baseline: 0ea8d40.
 
 ## Current goal
 
-M6: run native platform CI and public-fixture compatibility checks. M0–M5 are
+M6: validate the macOS system-directory-alias fix through native CI. M0–M5 are
 implemented; hardening, interoperability and usage documentation are complete.
 
 ## Completed
@@ -29,14 +29,24 @@ implemented; hardening, interoperability and usage documentation are complete.
 - README documents every command, compatibility boundaries and migration.
 - .NET sources/projects archived under legacy/dotnet; Rust is the primary project.
 - Native three-platform CI and Rust 1.88 minimum job configured, awaiting remote runs.
+- d7812e5 checkpoint pushed and verified.
+- First native run: Linux, Windows and Rust 1.88 passed; macOS failed because the
+  symlink guard rejected the OS /var -> /private/var alias. Exact trusted macOS
+  /var, /tmp and /etc aliases are now allowed; arbitrary symlinks remain rejected.
+- 30 Linux regressions pass before the alias fix; POSIX filenames can be inspected
+  on Windows, with native output-name checks applied only when extracting.
+- Public Cobertos fixtures test.unitypackage, testo.unitypackage and
+  testLeadingDots.unitypackage pass verify. Third-party payloads are not committed.
+- Public security fixtures use plain tar: wrapped with gzip only for checks;
+  bad-Windows-name content remains inspectable, unsafe pathnames are diagnosed.
 
 ## Validation and limitations
 
-No actual failing user package was provided. Public fixture checks remain to run.
+No actual failing user package was provided. No real Unity Editor is available.
 Unity import checks: NOT RUN (no Editor in this environment).
 Native macOS/Windows checks will run through GitHub Actions.
 
 ## Next action
 
-Push this checkpoint, inspect GitHub Actions jobs and fix any native failures.
-Validate public Unity-generated fixtures, update results and push final progress.
+Run checks, push the path-compatibility fix, verify native jobs for that SHA and
+record final results. Unity Editor import validation remains explicitly NOT RUN.
