@@ -26,9 +26,12 @@ stable/prerelease/re-run publisher argument checks, workflow structure, docs lin
 tar formats. The actual binary reports uup 2.0.0; the Linux release bundle has
 the root executable with 0755 mode, all documents and a SHA-256 companion.
 
-Next action: commit/push next, create/push annotated v2.0.0 on the exact release
-commit, then verify remote native jobs and Release assets. No release/tag is
-claimed published yet.
+Release commit 8a07187296c64d67f904825d371ed59375e03828 was pushed to next.
+Annotated v2.0.0 was pushed; remote tag object is 4facd5a9f40ea8fdd69be9140db920fb85fb733f
+and its peeled SHA matches that exact commit. Tag push triggered
+[Release workflow](https://github.com/CKylinMC/ununitypackage/actions/runs/36753329704),
+currently in progress. Next action: verify native jobs and the resulting GitHub
+Release assets/prerelease status/automatic notes; publication is not claimed yet.
 
 ## Delivered
 
