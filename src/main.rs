@@ -17,7 +17,7 @@ use uup_cli::{
 
 #[derive(Parser)]
 #[command(
-    name = "uup-cli",
+    name = "uup",
     version,
     about = "ununitypackage-cli: inspect, extract, edit and create Unity packages"
 )]

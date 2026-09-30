@@ -1,13 +1,14 @@
 # Progress
 
-Updated: 2026-09-30 (Asia/Shanghai). Branch: next. Version: uup-cli 0.1.0.
+Updated: 2026-10-01 (Asia/Shanghai). Branch: next. Version: uup-cli 0.1.0.
 Original baseline: 0ea8d40.
 
 ## Status
 
 M0–M6 implementation milestones are complete. Rust is the primary project;
-the original .NET project is retained under legacy/dotnet. No implementation
-milestone is pending. Actual Unity Editor import remains a separate unrun gate.
+the original .NET project is retained under legacy/dotnet. The requested usage
+guide and binary-name correction are being validated as a follow-up.
+Actual Unity Editor import remains a separate unrun gate.
 
 ## Delivered
 
@@ -28,6 +29,25 @@ milestone is pending. Actual Unity Editor import remains a separate unrun gate.
 - Portable archive inspection, native output-filename validation, trusted macOS
   system aliases and symlink guards. Unclassified asset.meta entries stay opaque.
 - Usage/migration documentation, independent format checks and native CI artifacts.
+- Standalone Chinese usage guide (USAGE.md) with all commands, selectors, workflows
+  and a source-checked comparison against the legacy extract/build interface.
+
+## Follow-up: usage guide and executable name
+
+The user specified that only the project is named uup-cli; the executable must be
+uup / uup.exe. Cargo binary, clap help, regression executable lookup, CI paths and
+all current command examples are updated. The GUID generation namespace retains
+its existing project identity. CI artifacts now also include docs/USAGE.md.
+
+Local verification: PASS, 32 regressions, format, strict clippy, release build and
+independent USTAR/GNU/local-PAX checks. An offline cargo install installed only
+bin/uup, with version/help named uup. Forty one-time usage workflow invocations
+passed, including build/cover migration, selectors, mutation and both UPM layouts;
+documentation links were checked.
+
+Next action: commit/push next, then check the new native build artifacts. The
+successful CI recorded below predates this binary-name correction and is the
+baseline result.
 
 ## Verified
 

@@ -3,6 +3,7 @@
 `uup-cli` (ununitypackage-cli) replaces the .NET executable with a portable Rust
 library and CLI. The implementation branch is `next`, based on `0ea8d40`.
 Repository ownership/name and the existing WTFPL license remain unchanged.
+The project/Cargo package is uup-cli; its binary is uup (uup.exe on Windows).
 
 | Milestone | Deliverable / exit condition |
 | --- | --- |

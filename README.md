@@ -3,6 +3,10 @@
 无需 Unity Editor 的 Rust 命令行工具，用于查看、解包、修改和创建 `.unitypackage`。
 支持 macOS、Linux 和 Windows；使用纯 Rust gzip/tar，不依赖系统 tar 或 .NET。
 
+项目和 Cargo 包名为 `uup-cli`；安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
+
+完整操作示例、参数说明和旧版迁移对照见 [使用文档](docs/USAGE.md)。
+
 ## 安装 / 构建
 
 需要 Rust 1.88 或更新版本。直接安装当前 `next` 分支：
@@ -15,29 +19,29 @@ cargo install --git https://github.com/CKylinMC/ununitypackage --branch next --l
 
 ```sh
 cargo build --release --locked
-./target/release/uup-cli --help
+./target/release/uup --help
 ```
 
-Windows 可运行 `target\release\uup-cli.exe`。GitHub Actions 的 Rust CI 在三个
-原生平台测试并生成可下载的构建 artifacts（包含可执行文件、README 和 LICENSE）。
+Windows 可运行 `target\release\uup.exe`。GitHub Actions 的 Rust CI 在三个
+原生平台测试并生成可下载的构建 artifacts（包含可执行文件、README、使用文档和 LICENSE）。
 
-[已通过的三平台 CI 与构建产物](https://github.com/CKylinMC/ununitypackage/actions/runs/36724536480)：
+[next 分支的三平台 CI 与构建产物](https://github.com/CKylinMC/ununitypackage/actions/workflows/ci.yml?query=branch%3Anext)：
 Linux x64、macOS ARM64、Windows x64。Intel macOS 可从源码构建，本次没有对应原生 runner 验证。
 
 ## 查看与查找（不落盘）
 
 ```sh
-uup-cli info demo.unitypackage --json
-uup-cli list demo.unitypackage
-uup-cli list demo.unitypackage --raw
-uup-cli find demo.unitypackage '*.cs' --glob
-uup-cli find demo.unitypackage 'Runtime/.*\.cs$' --regex
-uup-cli show demo.unitypackage --path Assets/Demo/readme.txt
-uup-cli show demo.unitypackage --entry .icon.png --hex --limit 64
-uup-cli cat demo.unitypackage --path Assets/Demo/readme.txt
-uup-cli cat demo.unitypackage --path Assets/Demo/readme.txt --part meta
-uup-cli cat demo.unitypackage --entry .icon.png > icon.png
-uup-cli verify demo.unitypackage --json
+uup info demo.unitypackage --json
+uup list demo.unitypackage
+uup list demo.unitypackage --raw
+uup find demo.unitypackage '*.cs' --glob
+uup find demo.unitypackage 'Runtime/.*\.cs$' --regex
+uup show demo.unitypackage --path Assets/Demo/readme.txt
+uup show demo.unitypackage --entry .icon.png --hex --limit 64
+uup cat demo.unitypackage --path Assets/Demo/readme.txt
+uup cat demo.unitypackage --path Assets/Demo/readme.txt --part meta
+uup cat demo.unitypackage --entry .icon.png > icon.png
+uup verify demo.unitypackage --json
 ```
 
 这些命令不创建临时文件。索引只保存条目信息、小型 pathname 和 meta；payload
@@ -52,11 +56,11 @@ uup-cli verify demo.unitypackage --json
 ## 解包
 
 ```sh
-uup-cli extract demo.unitypackage -o extracted
-uup-cli extract demo.unitypackage -o selected --path Assets/Demo/readme.txt
-uup-cli extract demo.unitypackage -o scripts --glob '**/*.cs'
-uup-cli extract demo.unitypackage -o icon-only --entry .icon.png
-uup-cli extract demo.unitypackage -o physical --raw
+uup extract demo.unitypackage -o extracted
+uup extract demo.unitypackage -o selected --path Assets/Demo/readme.txt
+uup extract demo.unitypackage -o scripts --glob '**/*.cs'
+uup extract demo.unitypackage -o icon-only --entry .icon.png
+uup extract demo.unitypackage -o physical --raw
 ```
 
 选择资源时默认同时提取 `.meta`，可用 `--no-meta` 关闭。
@@ -68,19 +72,19 @@ uup-cli extract demo.unitypackage -o physical --raw
 ## 打包和修改
 
 ```sh
-uup-cli pack ./Assets demo.unitypackage
-uup-cli build ./Assets demo.unitypackage
-uup-cli pack ./source demo.unitypackage --prefix Assets/MyTool --generate-meta
-uup-cli repack demo.unitypackage -o repacked.unitypackage
+uup pack ./Assets demo.unitypackage
+uup build ./Assets demo.unitypackage
+uup pack ./source demo.unitypackage --prefix Assets/MyTool --generate-meta
+uup repack demo.unitypackage -o repacked.unitypackage
 
-uup-cli replace demo.unitypackage ./new.txt --path Assets/Demo/readme.txt -o edited.unitypackage
-uup-cli replace demo.unitypackage ./readme.meta --path Assets/Demo/readme.txt --part meta -o edited.unitypackage
-uup-cli add demo.unitypackage ./new.cs --path Assets/Demo/New.cs --generate-meta -o added.unitypackage
-uup-cli add demo.unitypackage ./settings.json --path PackageSettings/settings.json -o added.unitypackage
-uup-cli add demo.unitypackage ./extra.bin --entry extras/data.bin -o added.unitypackage
-uup-cli remove demo.unitypackage --path Assets/Demo/readme.txt -o removed.unitypackage
-uup-cli remove demo.unitypackage --path Assets/Demo --recursive -o removed.unitypackage
-uup-cli remove demo.unitypackage --entry extras/data.bin -o removed.unitypackage
+uup replace demo.unitypackage ./new.txt --path Assets/Demo/readme.txt -o edited.unitypackage
+uup replace demo.unitypackage ./readme.meta --path Assets/Demo/readme.txt --part meta -o edited.unitypackage
+uup add demo.unitypackage ./new.cs --path Assets/Demo/New.cs --generate-meta -o added.unitypackage
+uup add demo.unitypackage ./settings.json --path PackageSettings/settings.json -o added.unitypackage
+uup add demo.unitypackage ./extra.bin --entry extras/data.bin -o added.unitypackage
+uup remove demo.unitypackage --path Assets/Demo/readme.txt -o removed.unitypackage
+uup remove demo.unitypackage --path Assets/Demo --recursive -o removed.unitypackage
+uup remove demo.unitypackage --entry extras/data.bin -o removed.unitypackage
 ```
 
 输出包必须与输入不同。已有输出需要 `--force`；工具先写入同目录临时文件，
@@ -100,11 +104,11 @@ Unity 对每种 importer 自动生成的完整配置。
 ## manifest 和图标
 
 ```sh
-uup-cli metadata demo.unitypackage get manifest
-uup-cli metadata demo.unitypackage set manifest --file dependencies.json -o edited.unitypackage
-uup-cli metadata demo.unitypackage set icon --file icon.png -o edited.unitypackage
-uup-cli metadata demo.unitypackage set cover --file cover.png -o edited.unitypackage
-uup-cli metadata demo.unitypackage remove icon -o edited.unitypackage
+uup metadata demo.unitypackage get manifest
+uup metadata demo.unitypackage set manifest --file dependencies.json -o edited.unitypackage
+uup metadata demo.unitypackage set icon --file icon.png -o edited.unitypackage
+uup metadata demo.unitypackage set cover --file cover.png -o edited.unitypackage
+uup metadata demo.unitypackage remove icon -o edited.unitypackage
 ```
 
 `manifest` 操作 `packagemanagermanifest/asset`，接受带字符串值 dependencies 的 JSON
@@ -118,10 +122,10 @@ UPM 的 `package.json` 和项目的 `Packages/manifest.json` 是独立文件，�
 ## UPM → unitypackage
 
 ```sh
-uup-cli from-upm ./com.example.tool tool.unitypackage
-uup-cli from-upm ./com.example.tool tool.unitypackage --generate-meta --json
-uup-cli from-upm ./com.example.tool assets.unitypackage --layout assets --generate-meta
-uup-cli from-upm ./com.example.tool tool.unitypackage --exclude 'Tests/**' --generate-meta
+uup from-upm ./com.example.tool tool.unitypackage
+uup from-upm ./com.example.tool tool.unitypackage --generate-meta --json
+uup from-upm ./com.example.tool assets.unitypackage --layout assets --generate-meta
+uup from-upm ./com.example.tool tool.unitypackage --exclude 'Tests/**' --generate-meta
 ```
 
 源目录必须含合法的 `package.json`（name、SemVer version）。默认导入位置为
@@ -155,7 +159,7 @@ GNU 路径 64 KiB、meta 4 MiB、local PAX 1 MiB。前三项可通过
 cargo fmt --all --check
 cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked
-python scripts/interoperability.py target/release/uup-cli
+python scripts/interoperability.py target/release/uup
 ```
 
 归档测试与 Unity 导入验证分开记录。当前云端没有 Unity Editor；Unity 2022.3 LTS

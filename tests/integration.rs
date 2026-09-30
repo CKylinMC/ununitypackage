@@ -66,7 +66,7 @@ fn contents(path: &Path) -> BTreeMap<String, Vec<u8>> {
         .collect()
 }
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_uup-cli"))
+    Command::new(env!("CARGO_BIN_EXE_uup"))
         .args(args)
         .output()
         .unwrap()
@@ -233,7 +233,7 @@ fn read_only_commands_do_not_require_temp_directory() {
         vec!["show", "--path", "Assets/a.txt", "--json"],
         vec!["verify", "--json"],
     ] {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_uup-cli"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_uup"));
         command.arg(args[0]).arg(&package).args(&args[1..]);
         command
             .env("TMPDIR", &invalid)

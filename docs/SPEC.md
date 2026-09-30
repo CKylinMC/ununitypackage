@@ -1,5 +1,8 @@
 # uup-cli specification
 
+Project/Cargo package name: uup-cli (ununitypackage-cli). Executable/command:
+uup on macOS/Linux, uup.exe on Windows. The Rust library remains uup_cli.
+
 ## Content model
 
 Resources have a pathname and optional asset, asset.meta, preview.png and unknown

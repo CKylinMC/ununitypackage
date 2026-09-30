@@ -11,7 +11,7 @@ repository = "https://github.com/CKylinMC/ununitypackage"
 name = "uup_cli"
 
 [[bin]]
-name = "uup-cli"
+name = "uup"
 path = "src/main.rs"
 
 [dependencies]
