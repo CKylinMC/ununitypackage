@@ -1,54 +1,79 @@
 # Progress
 
-Updated: 2026-09-30 (Asia/Shanghai). Baseline: 0ea8d40.
+Updated: 2026-09-30 (Asia/Shanghai). Branch: next. Version: uup-cli 0.1.0.
+Original baseline: 0ea8d40.
 
-## Current goal
+## Status
 
-M6: validate the macOS system-directory-alias fix through native CI. M0–M5 are
-implemented; hardening, interoperability and usage documentation are complete.
+M0–M6 implementation milestones are complete. Rust is the primary project;
+the original .NET project is retained under legacy/dotnet. No implementation
+milestone is pending. Actual Unity Editor import remains a separate unrun gate.
 
-## Completed
+## Delivered
 
-- Repository/source review and eight legacy synthetic fixture checks.
-- Official exporter and UPM format research (see FORMAT.md).
-- Rust 1.98.1/.NET 8 prepared; remote read connectivity verified.
-- Implementation/specification, test strategy and cloud runbook written.
-- M0 pushed as f356462 (remote SHA verified).
-- Rust library/CLI implements every specified command, streaming reads,
-  transactional writes, resource/raw modifications and UPM conversion.
-- 19 integration regressions pass: unknown content, icon/manifest, folders,
-  selection, no-temp reads, CRC/truncation, safe paths, mutation preservation,
-  long names/PAX attributes, both UPM layouts and stable generated GUIDs.
-- cargo fmt, cargo test --locked and strict clippy pass on Linux.
-- Functional checkpoint 6c8cf2a pushed and verified.
-- 29 regressions now pass, including extension bounds, trailing-data rejection,
-  PAX size overrides, long links, malformed PNG, raw recovery and case-alias GUIDs.
-- Independent Python tarfile USTAR/GNU/local-PAX read/repack/extract checks pass.
-- Original tar names (including ./), supported attributes and long link targets
-  are preserved. Empty unknown directories are retained.
-- README documents every command, compatibility boundaries and migration.
-- .NET sources/projects archived under legacy/dotnet; Rust is the primary project.
-- Native three-platform CI and Rust 1.88 minimum job configured, awaiting remote runs.
-- d7812e5 checkpoint pushed and verified.
-- First native run: Linux, Windows and Rust 1.88 passed; macOS failed because the
-  symlink guard rejected the OS /var -> /private/var alias. Exact trusted macOS
-  /var, /tmp and /etc aliases are now allowed; arbitrary symlinks remain rejected.
-- 30 Linux regressions pass before the alias fix; POSIX filenames can be inspected
-  on Windows, with native output-name checks applied only when extracting.
-- Public Cobertos fixtures test.unitypackage, testo.unitypackage and
-  testLeadingDots.unitypackage pass verify. Third-party payloads are not committed.
-- Public security fixtures use plain tar: wrapped with gzip only for checks;
-  bad-Windows-name content remains inspectable, unsafe pathnames are diagnosed.
-- Binary/oversized unknown asset.meta entries are kept raw when no pathname
-  defines a resource; they are not rejected merely because of their basename.
+- Repository review, eight legacy synthetic checks, format research, plan,
+  CLI specification, verification strategy and cloud recovery runbook.
+- Rust library and CLI: info, list, find, cat, show, extract, pack/build, repack,
+  add, replace, remove, metadata, from-upm and verify.
+- Streaming read-only operations, explicit resource/GUID/raw selectors, JSON
+  output, bounded archive processing and actionable diagnostics.
+- Full/selected extraction with optional metas, empty folders, non-Assets paths,
+  icons, manifests and unknown content. Unsafe paths and output conflicts fail.
+- Transactional archive output, preservation of unmodified payloads, GUIDs,
+  metas, previews, original tar names and supported extension attributes.
+- Raw-entry and resource editing, independent manifest/icon/cover operations,
+  complete UPM collection and both Packages and Assets mapping modes.
+- Stable generated GUIDs when explicitly requested, preserved existing importer
+  settings, dependency and compatibility reports without fetching dependencies.
+- Portable archive inspection, native output-filename validation, trusted macOS
+  system aliases and symlink guards. Unclassified asset.meta entries stay opaque.
+- Usage/migration documentation, independent format checks and native CI artifacts.
 
-## Validation and limitations
+## Verified
 
-No actual failing user package was provided. No real Unity Editor is available.
-Unity import checks: NOT RUN (no Editor in this environment).
-Native macOS/Windows checks will run through GitHub Actions.
+Tested implementation commit: 79399b2f57f8bc65b58e2ef2691f34d6ec4d073f.
 
-## Next action
+[Successful native CI run](https://github.com/CKylinMC/ununitypackage/actions/runs/36724536480)
 
-Run checks, push the path-compatibility fix, verify native jobs for that SHA and
-record final results. Unity Editor import validation remains explicitly NOT RUN.
+| Job | Result |
+| --- | --- |
+| Linux native | PASS: format, clippy, regressions, release build, Python interoperability |
+| macOS native | PASS: format, clippy, regressions, release build, Python interoperability |
+| Windows native | PASS: format, clippy, regressions, release build, Python interoperability |
+| Rust 1.88 minimum | PASS: regressions |
+
+Verified downloadable artifacts: uup-cli-Linux-X64, uup-cli-macOS-ARM64 and
+uup-cli-Windows-X64. Each contains the executable, README and LICENSE.
+
+Local Linux validation: 32 integration regressions pass; cargo fmt --check,
+strict clippy, release build and independent Python USTAR/GNU/local-PAX checks
+pass. Platform-specific tests run in their corresponding native CI jobs.
+
+Public Cobertos fixtures test.unitypackage, testo.unitypackage and
+testLeadingDots.unitypackage pass verify. Public security fixtures are plain tar;
+they were wrapped with gzip only for checks. Invalid output filenames remain
+inspectable, and unsafe pathnames are diagnosed. Third-party payloads are not
+committed; regression fixtures are generated from explicit test data.
+
+## Separate verification and limits
+
+- Unity 2022.3 LTS and Unity 6 Editor import: NOT RUN (Editor unavailable).
+  The TESTING.md checklist covers UI icons, dependency/importer behavior,
+  resource references, non-Assets imports and the legacy duplication report.
+- No failing user package was provided; additional real-world compatibility
+  cases can be added when one becomes available.
+- Global PAX headers and sparse formats are explicitly rejected. Container bytes
+  may change on rewrite; unmodified supported entry content is preserved.
+- Generated metas are minimal; existing importer configuration is preserved.
+- macOS native CI uses ARM64. Intel macOS can build from source but has not been
+  tested on a native runner in this delivery.
+
+## Checkpoints and continuation
+
+Implementation checkpoints f356462, 6c8cf2a, d7812e5, bf52144 and 79399b2 were
+committed, pushed and checked against remote SHAs. The final documentation
+checkpoint records the successful CI result and changes no implementation code.
+
+For subsequent work, follow CLOUD-RUNBOOK.md: inspect local/remote state and this
+file before changing anything. The next independent validation task is the Unity
+Editor checklist, followed by adding any supplied failing package as a regression.

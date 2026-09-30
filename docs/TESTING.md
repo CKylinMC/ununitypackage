@@ -34,3 +34,16 @@ Test in clean Unity 2022.3 LTS and Unity 6 projects:
 
 Do not label Unity import validation complete based on CLI round trips. In cloud
 environments without an Editor, record this gate as NOT RUN.
+
+## Recorded implementation validation
+
+Implementation commit 79399b2f57f8bc65b58e2ef2691f34d6ec4d073f passed
+[native CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36724536480)
+on Linux, macOS and Windows, and the Rust 1.88 minimum-toolchain job. Native jobs
+run format checking, strict clippy, regression tests, release builds and the
+independent Python USTAR/GNU/local-PAX interoperability script. Linux has 32
+integration regressions; platform-specific cases run on the corresponding hosts.
+
+The run provides uup-cli-Linux-X64, uup-cli-macOS-ARM64 and uup-cli-Windows-X64
+artifacts containing the executable, README and LICENSE. Intel macOS has not had
+native-runner validation. Unity Editor import remains NOT RUN.
