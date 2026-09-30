@@ -39,6 +39,7 @@ jobs:
             target/release/uup
             target/release/uup.exe
             README.md
+            SKILL.md
             docs/USAGE.md
             LICENSE
           if-no-files-found: error

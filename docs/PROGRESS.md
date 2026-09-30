@@ -31,6 +31,9 @@ Actual Unity Editor import remains a separate unrun gate.
 - Usage/migration documentation, independent format checks and native CI artifacts.
 - Standalone Chinese usage guide (USAGE.md) with all commands, selectors, workflows
   and a source-checked comparison against the legacy extract/build interface.
+- Root SKILL.md with Agent task selection, selectors, workflow examples, structured
+  output/byte handling, recovery guidance and validation boundaries. Future CI
+  artifacts include this skill alongside the executable and usage guide.
 
 ## Follow-up: usage guide and executable name
 
@@ -53,6 +56,12 @@ Direct ZIP inspection from this cloud host was unavailable (artifact download
 returned HTTP 403); no claim of downloaded-binary inspection is made.
 
 ## Verified
+
+Agent skill documentation validation: PASS. SKILL.md frontmatter and local links
+were checked; 41 literal CLI examples ran on generated fixtures, every resulting
+package passed verify, and the embedded Python example correctly selected by GUID
+and kept payload bytes separate from JSON. This follow-up changes documentation
+and the artifact file list only; no Rust implementation changed.
 
 Tested implementation commit: 3cbd5cb4f953cab5cce7966facda27245c7b6386.
 

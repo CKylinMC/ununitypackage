@@ -6,6 +6,7 @@
 项目和 Cargo 包名为 `uup-cli`；安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
 
 完整操作示例、参数说明和旧版迁移对照见 [使用文档](docs/USAGE.md)。
+Agent 的命令选择、操作流程、程序调用示例和校验规则见 [SKILL.md](SKILL.md)。
 
 ## 安装 / 构建
 
