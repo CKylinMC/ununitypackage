@@ -70,7 +70,7 @@ metadata 的 summary/list/get 同样不落盘，dump 则明确导出到指定目
   文件夹可能没有 asset，meta/preview 也可能不存在；先检查实际组成。
 - `--entry` 直接选择具体条目，不需要 `--part`。
 - `extract` 允许重复或混合选择器，结果取并集；资源默认带出 meta。
-- `--path` 精确匹配目录自身，解包后代还需 `--glob '目录/**'`。
+- `extract --path` 精确匹配目录自身，解包后代可用目录位置参数或 `--glob '目录/**'`。
 - `extract --raw` 按物理 tar 路径输出，其中 `--path/--glob` 也匹配物理路径；不能与 `--guid` 同用。
 
 路径、glob、正则含空格或 shell 特殊字符时正确引用。

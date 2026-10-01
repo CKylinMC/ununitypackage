@@ -78,8 +78,18 @@ regressions PASS. Independent Python USTAR/GNU/local-PAX checks now also cover
 scope/statistics, metadata dump/edit and untouched bytes. Thirty-two distinct
 literal new-feature documentation commands and two SKILL Python examples PASS
 on generated fixtures; frontmatter and local documentation links were checked.
-Seven release-script tests PASS. Native v2.1.0 CI and publication are still pending;
-PROGRESS.md records the active release gate and subsequent outcome.
+Seven release-script tests PASS.
+
+Release commit 7d0a45014a989d2537524a8c3eeb8befa4e002a7 (annotated v2.1.0) passed
+[native/MSRV release CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36892269550):
+Linux 43 regressions, macOS 44, Windows 41 and Rust 1.88 43. Each native job also
+passed format/clippy, release build and all three independent tar formats.
+All six workflow jobs succeeded, including version checks and publication.
+[v2.1.0 Release](https://github.com/CKylinMC/ununitypackage/releases/tag/v2.1.0)
+is stable, with generated v2.0.0...v2.1.0 notes and three bundles/checksums.
+Actual downloads passed SHA-256, file-set, root-name, native-header and Unix-mode
+checks; the downloaded Linux uup reports 2.1.0 and passes interoperability.
+Unity 2022.3 LTS / Unity 6 Editor import remains NOT RUN.
 
 Release commit 8a07187296c64d67f904825d371ed59375e03828 (v2.0.0) passed
 [release CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36753329704)

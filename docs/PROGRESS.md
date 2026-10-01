@@ -5,50 +5,51 @@ Original baseline: 0ea8d40.
 
 ## Status
 
-Active goal: user-authorized v2.1.0 extension and stable release. N0 documentation
-checkpoint 321db22 is pushed and its remote SHA verified. N1/N2 shared scopes,
-ls alias and info statistics are implemented. Local format, strict clippy and
-35 integration regressions PASS. New cases verify Unicode/virtual directories,
-component boundaries, selector intersections, raw scopes, metadata inclusion and
-disjoint category/extension count and byte sums. N3/N4 metadata inventory,
-default summary, safe dump, resource/raw settings and JSON Pointer editing are
-implemented; local format/strict clippy and 43 regressions PASS. Summary/get/list
-run without a writable temporary directory. Tests verify ambiguity handling,
-PNG header summaries, malformed/oversized JSON, dump conflicts/symlinks, pointer
-escaping/arrays, failed-edit preservation, identity and unknown byte retention.
-N3/N4 checkpoint cb23e5e is pushed and its remote SHA verified. N5 usage and Agent
-documentation now covers scopes, statistics schema/categories, discovered kinds,
-summary/dump, selectors, pointer rules and opaque settings. Thirty-two distinct
-literal new-feature examples, two embedded Python examples, frontmatter and local
-links PASS on generated fixtures. Independent Python USTAR/GNU/local-PAX checks
-now additionally verify scope/statistics and metadata dump/edit/unchanged bytes;
-all three PASS. Seven release-script tests PASS and the release build PASS.
-N5 checkpoint bc39519 is pushed and its remote SHA verified. Rust 1.88 also PASS:
-43 regressions against the new implementation. Cargo/lock/current version examples
-are now synchronized to 2.1.0. Remote next matches bc39519 and v2.1.0 is absent.
-Final 2.1.0 format/strict clippy, 43 regressions, release build, all three Python
-formats, seven release tests, tag/Cargo alignment and 32 CLI/two Python examples
-PASS. The local Linux bundle is created with uup 2.1.0 and current documents.
+Completed goal: user-authorized v2.1.0 extensions and stable release. Shared
+component-aware scopes, ls/list alias, Unity category/extension statistics,
+metadata inventory/default summary/safe dump, package.json/project manifest and
+resource/raw settings edits are implemented. Cargo/lock/current examples use
+2.1.0; historical 2.0.0 records below remain unchanged.
+
+Local format/strict clippy, 43 regressions, release build, three independent
+Python tar formats, seven release tests and tag/Cargo alignment PASS. Thirty-two
+distinct new-feature CLI documentation examples and two SKILL Python examples,
+frontmatter and local links PASS on generated fixtures. Rust 1.88 also PASS.
+Tests cover no-temp reads, component boundaries/virtual directories, scoped
+extraction/metas, disjoint counts, metadata ambiguity, malformed/oversized JSON,
+PNG header summaries, dump preflight/symlinks, pointer escaping/arrays, failed-edit
+preservation and untouched GUID/meta/preview/unknown bytes.
+
 Release commit 7d0a45014a989d2537524a8c3eeb8befa4e002a7 is pushed and its remote SHA
 verified. Annotated v2.1.0 is pushed; remote tag object is
 1611a377fd7e11b924739c6e5d25f1b64fc373a2 and its peeled SHA equals that exact release
 commit. No tag was moved. [v2.1.0 Release workflow](https://github.com/CKylinMC/ununitypackage/actions/runs/36892269550)
-is in progress on that release SHA. Do not mistake the historical v2.0.0 run
-for v2.1.0 verification. Next: observe all native/MSRV/publication jobs in run
-36892269550, then download every bundle/checksum and verify published
-stable status, architectures, binary names, documentation and version output.
-Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
-2.0.0 validation below is historical and is not evidence for the new features.
+completed successfully on that SHA: all six version/native/MSRV/publication jobs
+PASS. Linux ran 43 regressions, macOS 44, Windows 41, Rust 1.88 43; all three native
+jobs also passed the independent USTAR/GNU/local-PAX checks.
+
+[Stable v2.1.0 Release](https://github.com/CKylinMC/ununitypackage/releases/tag/v2.1.0)
+is published with draft=false, prerelease=false and generated notes comparing
+v2.0.0...v2.1.0. All three archives and SHA-256 companions were downloaded and
+verified. Linux x86_64/macOS ARM64/Windows x86_64 binary headers, root uup/uup.exe,
+Unix 0755 modes, file sets and current documentation match. The downloaded Linux
+binary reports uup 2.1.0 and passes all three independent interoperability checks.
+
+Checkpoints 321db22, 6d6abbf, cb23e5e, bc39519, 7d0a450, bdf2ae4 and 2992b62 were
+committed/pushed and remote-SHA verified. Subsequent documentation records the
+successful delivery without changing the published tag. No active implementation
+blockers remain. The separate next validation task is Unity 2022.3/Unity 6 Editor
+import, which remains NOT RUN because no Editor is available.
 
 | v2.1.0 goal | Status |
 | --- | --- |
 | N0 specs before code | Complete; 321db22 pushed and verified |
-| N1 scopes/ls | Complete locally; native release CI pending |
-| N2 info statistics | Complete locally; native release CI pending |
-| N3 metadata discovery/dump | Complete locally; native release CI pending |
-| N4 metadata edits | Complete locally; native release CI pending |
-| N5 tests/docs | Complete locally: 43 regressions, three formats, 32 CLI + 2 Python examples |
-| N6 2.1.0 release | Commit/tag pushed and SHA-verified; native/publication pending |
+| N1 scopes/ls | Complete; local and native CI PASS |
+| N2 info statistics | Complete; local and native CI PASS |
+| N3 metadata discovery/dump | Complete; local and native CI PASS |
+| N4 metadata edits | Complete; local and native CI PASS |
+| N5 tests/docs | Complete; 43 Linux / 44 macOS / 41 Windows, three formats, 32 CLI + 2 Python examples |
+| N6 2.1.0 release | Complete; tag/CI/stable Release and all downloads verified |
 
 M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage
