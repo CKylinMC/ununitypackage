@@ -32,10 +32,10 @@ PASS. The local Linux bundle is created with uup 2.1.0 and current documents.
 Release commit 7d0a45014a989d2537524a8c3eeb8befa4e002a7 is pushed and its remote SHA
 verified. Annotated v2.1.0 is pushed; remote tag object is
 1611a377fd7e11b924739c6e5d25f1b64fc373a2 and its peeled SHA equals that exact release
-commit. No tag was moved. At this checkpoint the new Actions run has not yet
-appeared in the API (event propagation); do not mistake the historical v2.0.0 run
-for v2.1.0 verification. Next: locate the v2.1.0 release run, observe all native/
-MSRV/publication jobs, then download every bundle/checksum and verify published
+commit. No tag was moved. [v2.1.0 Release workflow](https://github.com/CKylinMC/ununitypackage/actions/runs/36892269550)
+is in progress on that release SHA. Do not mistake the historical v2.0.0 run
+for v2.1.0 verification. Next: observe all native/MSRV/publication jobs in run
+36892269550, then download every bundle/checksum and verify published
 stable status, architectures, binary names, documentation and version output.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
