@@ -5,6 +5,7 @@ pub mod mutate;
 pub mod pack;
 pub mod paths;
 pub mod query;
+pub mod stats;
 pub mod write;
 
 use std::fmt;

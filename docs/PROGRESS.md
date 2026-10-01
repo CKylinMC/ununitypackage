@@ -6,17 +6,20 @@ Original baseline: 0ea8d40.
 ## Status
 
 Active goal: user-authorized v2.1.0 extension and stable release. N0 documentation
-contract is prepared; implementation has not started. Next actions: push this
-documentation checkpoint, implement shared scopes/ls, info statistics, metadata
-discovery and JSON editing, then regressions/docs and version/tag publication.
+checkpoint 321db22 is pushed and its remote SHA verified. N1/N2 shared scopes,
+ls alias and info statistics are implemented. Local format, strict clippy and
+35 integration regressions PASS. New cases verify Unicode/virtual directories,
+component boundaries, selector intersections, raw scopes, metadata inclusion and
+disjoint category/extension count and byte sums. Next: implement metadata
+discovery/summary/dump and JSON editing, then docs and version/tag publication.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
 
 | v2.1.0 goal | Status |
 | --- | --- |
-| N0 specs before code | Prepared; push and remote SHA verification next |
-| N1 scopes/ls | Pending |
-| N2 info statistics | Pending |
+| N0 specs before code | Complete; 321db22 pushed and verified |
+| N1 scopes/ls | Complete locally; native release CI pending |
+| N2 info statistics | Complete locally; native release CI pending |
 | N3 metadata discovery/dump | Pending |
 | N4 metadata edits | Pending |
 | N5 tests/docs | Pending |

@@ -7,6 +7,43 @@ use anyhow::{Result, ensure};
 use serde::Serialize;
 use std::{collections::BTreeSet, io::Write};
 
+/// A logical directory/file scope, or a physical tar scope for raw queries.
+#[derive(Default, Clone, Debug)]
+pub struct Scope(Option<String>);
+impl Scope {
+    pub fn new(path: Option<&str>) -> Result<Self> {
+        let path = path
+            .filter(|p| !matches!(*p, "." | "./" | ".\\"))
+            .map(normalize)
+            .transpose()?;
+        Ok(Self(path))
+    }
+
+    pub fn path(&self) -> Option<&str> {
+        self.0.as_deref()
+    }
+
+    pub fn matches(&self, path: &str) -> bool {
+        self.0.as_ref().is_none_or(|prefix| {
+            path == prefix
+                || path
+                    .strip_prefix(prefix)
+                    .is_some_and(|suffix| suffix.starts_with('/'))
+        })
+    }
+}
+
+pub fn scoped_items(index: &Index, raw: bool, scope: &Scope) -> Result<Vec<Item>> {
+    let items: Vec<_> = items(index, raw)
+        .into_iter()
+        .filter(|item| scope.matches(&item.path))
+        .collect();
+    if items.is_empty() && scope.path().is_some() {
+        return Err(NoMatch(format!("path scope not found: {}", scope.path().unwrap())).into());
+    }
+    Ok(items)
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct Selector {
     pub path: Option<String>,

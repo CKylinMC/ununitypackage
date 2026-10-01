@@ -2,6 +2,7 @@ use crate::{
     NoMatch,
     archive::{Index, scan},
     paths::{check_host_path, fs_key, normalize, reject_symlinks},
+    query::Scope,
 };
 use anyhow::{Context, Result, ensure};
 use std::{
@@ -12,6 +13,7 @@ use std::{
 
 #[derive(Default)]
 pub struct Extraction {
+    pub scope: Option<String>,
     pub paths: Vec<String>,
     pub guids: Vec<String>,
     pub globs: Vec<String>,
@@ -32,6 +34,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
         index.ensure_valid()?;
     }
     index.check_unchanged()?;
+    let scope = Scope::new(selection.scope.as_deref())?;
     let mut selected = BTreeMap::<usize, String>::new();
     let mut directories = BTreeSet::new();
     let full = selection.paths.is_empty()
@@ -72,10 +75,11 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
                 .iter()
                 .filter(|g| g.eq_ignore_ascii_case(&r.guid))
                 .collect();
-            if full
-                || paths.contains(&r.path)
-                || !guid_matches.is_empty()
-                || globs.is_match(&r.path)
+            if scope.matches(&r.path)
+                && (full
+                    || paths.contains(&r.path)
+                    || !guid_matches.is_empty()
+                    || globs.is_match(&r.path))
             {
                 matched_paths.insert(r.path.clone());
                 matched_guids.extend(guid_matches.into_iter().cloned());
@@ -93,7 +97,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
         }
     }
     for e in &index.entries {
-        if e.path.is_empty() {
+        if e.path.is_empty() || !scope.matches(&e.path) {
             continue;
         }
         let explicit = entries.contains(&e.path);
@@ -132,6 +136,17 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
     if selected.is_empty() && directories.is_empty() {
         return Err(NoMatch("no entries selected".into()).into());
     }
+    write_selected(index, output, &selected, &directories)
+}
+
+/// Preflight and stream a named entry selection; shared by extraction and metadata dump.
+pub(crate) fn write_selected(
+    index: &Index,
+    output: &Path,
+    selected: &BTreeMap<usize, String>,
+    directories: &BTreeSet<String>,
+) -> Result<usize> {
+    index.check_unchanged()?;
     let mut output_names = BTreeSet::new();
     let mut files = BTreeSet::new();
     for path in selected.values() {
@@ -155,7 +170,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
             );
         }
     }
-    for path in &directories {
+    for path in directories {
         ensure!(
             !files.contains(&fs_key(path)),
             "file/directory collision: {path}"
@@ -172,7 +187,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
             target.display()
         );
     }
-    for path in &directories {
+    for path in directories {
         let target = output.join(path);
         reject_symlinks(&target)?;
         ensure!(
@@ -181,7 +196,7 @@ pub fn extract(index: &Index, output: &Path, selection: &Extraction) -> Result<u
             target.display()
         );
     }
-    for path in &directories {
+    for path in directories {
         fs::create_dir_all(output.join(path))?;
     }
     scan(&index.source, index.limits, |id, entry| {

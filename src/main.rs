@@ -11,8 +11,8 @@ use uup_cli::{
     extract::{Extraction, extract},
     mutate,
     pack::{self, PackOptions},
-    query::{self, Part, Selector},
-    write,
+    query::{self, Part, Scope, Selector},
+    stats, write,
 };
 
 #[derive(Parser)]
@@ -60,6 +60,18 @@ struct Destination {
     #[arg(long)]
     force: bool,
 }
+#[derive(Args)]
+struct PathScope {
+    /// Restrict the command to an exact file or a directory and its descendants.
+    inside_path: Option<String>,
+    #[arg(long, conflicts_with = "inside_path")]
+    path: Option<String>,
+}
+impl PathScope {
+    fn scope(&self) -> Result<Scope> {
+        Scope::new(self.inside_path.as_deref().or(self.path.as_deref()))
+    }
+}
 #[derive(ValueEnum, Clone)]
 enum MetadataKind {
     Manifest,
@@ -101,10 +113,17 @@ enum Layout {
 #[derive(Subcommand)]
 enum Command {
     /// Show package totals and diagnostics.
-    Info { package: PathBuf },
+    Info {
+        package: PathBuf,
+        #[command(flatten)]
+        scope: PathScope,
+    },
     /// List resources and special/unknown content.
+    #[command(visible_alias = "ls")]
     List {
         package: PathBuf,
+        #[command(flatten)]
+        scope: PathScope,
         #[arg(long)]
         raw: bool,
     },
@@ -112,6 +131,8 @@ enum Command {
     Find {
         package: PathBuf,
         pattern: String,
+        #[command(flatten)]
+        scope: PathScope,
         #[arg(long, conflicts_with = "regex")]
         glob: bool,
         #[arg(long)]
@@ -144,6 +165,8 @@ enum Command {
     /// Extract all content or selected resources/raw entries.
     Extract {
         package: PathBuf,
+        /// Restrict extraction to an exact file or a directory and its descendants.
+        inside_path: Option<String>,
         #[arg(short, long, default_value = ".")]
         output: PathBuf,
         #[arg(long)]
@@ -274,10 +297,13 @@ fn run(cli: &Cli) -> Result<()> {
         Ok(idx)
     };
     match &cli.command {
-        Command::Info { package } => {
+        Command::Info { package, scope } => {
             let idx = open(package)?;
+            let scope = scope.scope()?;
+            let statistics = stats::collect(&idx, &scope)?;
             let summary = json!({"package":package,"entries":idx.entries.len(),"resources":idx.resources.len(),
-                "payload_bytes":idx.entries.iter().map(|e| e.size).sum::<u64>(),"diagnostics":idx.diagnostics});
+                "payload_bytes":idx.entries.iter().map(|e| e.size).sum::<u64>(),"diagnostics":idx.diagnostics,
+                "scope":scope.path(),"statistics":statistics});
             if cli.json {
                 emit(&summary)?;
             } else {
@@ -287,11 +313,32 @@ fn run(cli: &Cli) -> Result<()> {
                     idx.entries.len(),
                     summary["payload_bytes"]
                 );
+                println!("scope: {}", scope.path().unwrap_or("."));
+                println!(
+                    "{} resource files, {} bytes, {} folders",
+                    statistics.files.count, statistics.files.bytes, statistics.folders
+                );
+                println!("category\tcount\tbytes");
+                for (category, count) in &statistics.categories {
+                    println!("{category}\t{}\t{}", count.count, count.bytes);
+                }
+                println!("extension\tcount\tbytes");
+                for (extension, count) in &statistics.extensions {
+                    println!("{extension}\t{}\t{}", count.count, count.bytes);
+                }
+                println!("archive auxiliary\tcount\tbytes");
+                for (kind, count) in &statistics.auxiliary {
+                    println!("{kind}\t{}\t{}", count.count, count.bytes);
+                }
             }
         }
-        Command::List { package, raw } => {
+        Command::List {
+            package,
+            raw,
+            scope,
+        } => {
             let idx = open(package)?;
-            print_items(&query::items(&idx, *raw), cli.json)?;
+            print_items(&query::scoped_items(&idx, *raw, &scope.scope()?)?, cli.json)?;
         }
         Command::Find {
             package,
@@ -299,6 +346,7 @@ fn run(cli: &Cli) -> Result<()> {
             glob,
             regex,
             raw,
+            scope,
         } => {
             let idx = open(package)?;
             let glob = if *glob {
@@ -311,7 +359,7 @@ fn run(cli: &Cli) -> Result<()> {
             } else {
                 None
             };
-            let items: Vec<_> = query::items(&idx, *raw)
+            let items: Vec<_> = query::scoped_items(&idx, *raw, &scope.scope()?)?
                 .into_iter()
                 .filter(|item| {
                     if let Some(g) = &glob {
@@ -404,6 +452,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Extract {
             package,
+            inside_path,
             output,
             path,
             guid,
@@ -417,6 +466,7 @@ fn run(cli: &Cli) -> Result<()> {
                 &idx,
                 output,
                 &Extraction {
+                    scope: inside_path.clone(),
                     paths: path.clone(),
                     guids: guid.clone(),
                     globs: glob.clone(),

@@ -104,6 +104,278 @@ fn png() -> Vec<u8> {
 }
 
 #[test]
+fn scoped_queries_alias_virtual_directories_and_legacy_find() {
+    let dir = TempDir::new().unwrap();
+    let mut entries = record(A, "Assets/中文/run.ANIM", Some(b"clip"), false);
+    entries.extend(record(B, "Assets/中文Extra/code.cs", Some(b"code"), false));
+    let package = fixture(dir.path(), entries);
+    let listed = ok(run(&["list", path(&package), "Assets/中文", "--json"]));
+    assert_eq!(
+        listed.stdout,
+        ok(run(&[
+            "ls",
+            path(&package),
+            "--path",
+            "./Assets\\中文/",
+            "--json"
+        ]))
+        .stdout
+    );
+    let items: serde_json::Value = serde_json::from_slice(&listed.stdout).unwrap();
+    assert_eq!(items.as_array().unwrap().len(), 1);
+    assert_eq!(items[0]["path"], "Assets/中文/run.ANIM");
+    for args in [
+        vec![
+            "find",
+            path(&package),
+            "**/*.ANIM",
+            "Assets/中文",
+            "--glob",
+            "--json",
+        ],
+        vec![
+            "find",
+            path(&package),
+            "run",
+            "--path",
+            "Assets/中文",
+            "--json",
+        ],
+        vec!["list", path(&package), "Assets/中文/run.ANIM", "--json"],
+    ] {
+        assert_eq!(ok(run(&args)).stdout, listed.stdout);
+    }
+    assert!(
+        ok(run(&["find", path(&package), "code"]))
+            .stdout
+            .ends_with("Assets/中文Extra/code.cs\n".as_bytes())
+    );
+    let raw: serde_json::Value =
+        serde_json::from_slice(&ok(run(&["ls", path(&package), A, "--raw", "--json"])).stdout)
+            .unwrap();
+    assert_eq!(raw.as_array().unwrap().len(), 3);
+    for command in ["list", "info"] {
+        let output = run(&[command, path(&package), "Assets/missing", "--json"]);
+        assert_eq!(output.status.code(), Some(3));
+        assert!(output.stdout.is_empty());
+    }
+    assert_eq!(
+        run(&["find", path(&package), "code", "Assets/中文"])
+            .status
+            .code(),
+        Some(3)
+    );
+    assert_eq!(
+        run(&["ls", path(&package), "Assets", "--path", "Assets"])
+            .status
+            .code(),
+        Some(2)
+    );
+    assert_eq!(
+        run(&["info", path(&package), "../Assets"]).status.code(),
+        Some(1)
+    );
+    assert_eq!(
+        ok(run(&["ls", path(&package), ".", "--json"])).stdout,
+        ok(run(&["list", path(&package), "--json"])).stdout
+    );
+}
+
+#[test]
+fn scoped_extraction_includes_metas_and_intersects_selectors() {
+    let dir = TempDir::new().unwrap();
+    let mut entries = record(A, "Packages/com.demo/Runtime/code.cs", Some(b"code"), false);
+    entries.extend(record(
+        B,
+        "Packages/com.demoExtra/Runtime/code.cs",
+        Some(b"other"),
+        false,
+    ));
+    entries.push(("unknown/value.bin".into(), vec![1, 2, 3]));
+    let package = fixture(dir.path(), entries);
+    let out = dir.path().join("out");
+    ok(run(&[
+        "extract",
+        path(&package),
+        "Packages/com.demo",
+        "-o",
+        path(&out),
+    ]));
+    assert_eq!(
+        fs::read(out.join("Packages/com.demo/Runtime/code.cs")).unwrap(),
+        b"code"
+    );
+    assert!(out.join("Packages/com.demo/Runtime/code.cs.meta").exists());
+    assert!(!out.join("Packages/com.demoExtra").exists());
+    assert!(!out.join("unknown").exists());
+    let file = dir.path().join("file");
+    ok(run(&[
+        "extract",
+        path(&package),
+        "Packages/com.demo/Runtime/code.cs",
+        "-o",
+        path(&file),
+        "--no-meta",
+    ]));
+    assert!(!file.join("Packages/com.demo/Runtime/code.cs.meta").exists());
+    let miss = dir.path().join("miss");
+    assert_eq!(
+        run(&[
+            "extract",
+            path(&package),
+            "Packages/com.demo",
+            "--guid",
+            B,
+            "-o",
+            path(&miss)
+        ])
+        .status
+        .code(),
+        Some(3)
+    );
+    assert!(!miss.exists());
+    // Exact --path keeps its 2.0.0 semantics; positional scopes allow virtual directories.
+    assert_eq!(
+        run(&[
+            "extract",
+            path(&package),
+            "--path",
+            "Packages/com.demo",
+            "-o",
+            path(&miss)
+        ])
+        .status
+        .code(),
+        Some(3)
+    );
+    let raw = dir.path().join("raw");
+    ok(run(&[
+        "extract",
+        path(&package),
+        A,
+        "--raw",
+        "-o",
+        path(&raw),
+    ]));
+    assert_eq!(fs::read(raw.join(format!("{A}/asset"))).unwrap(), b"code");
+    assert!(!raw.join(B).exists());
+    let unknown = dir.path().join("unknown-out");
+    ok(run(&[
+        "extract",
+        path(&package),
+        "unknown",
+        "-o",
+        path(&unknown),
+    ]));
+    assert_eq!(
+        fs::read(unknown.join("unknown/value.bin")).unwrap(),
+        [1, 2, 3]
+    );
+}
+
+#[test]
+fn info_counts_unity_extensions_disjoint_categories_and_scopes() {
+    let dir = TempDir::new().unwrap();
+    let cases = [
+        ("run.anim", "animations"),
+        ("JUMP.ANIM", "animations"),
+        ("walk.controller", "controllers"),
+        ("walk.overrideController", "controllers"),
+        ("character.fbx", "models"),
+        ("song.ogg", "audio"),
+        ("movie.webm", "video"),
+        ("image.png", "images"),
+        ("map.renderTexture", "textures"),
+        ("code.cs", "scripts"),
+        ("demo.asmdef", "assembly_definitions"),
+        ("plugin.dll", "plugin_binaries"),
+        ("native.so", "plugin_binaries"),
+        ("level.unity", "scenes"),
+        ("unit.prefab", "prefabs"),
+        ("surface.mat", "materials"),
+        ("node.shadergraph", "shaders"),
+        ("window.uxml", "ui"),
+        ("face.ttf", "fonts"),
+        ("surface.physicMaterial", "physics"),
+        ("soil.terrainlayer", "terrain"),
+        ("readme.md", "text"),
+        ("value.asset", "assets"),
+        ("README", "other"),
+        ("unknown.weird", "other"),
+    ];
+    let mut entries = vec![];
+    for (i, (name, _)) in cases.iter().enumerate() {
+        entries.extend(record(
+            &format!("{:032x}", i + 1),
+            &format!("Packages/com.demo/{name}"),
+            Some(b"abc"),
+            false,
+        ));
+    }
+    entries.extend(record(A, "Assets/empty", None, true));
+    entries.extend(record(B, "PackageSettings/empty.json", Some(b""), false));
+    entries.extend([
+        (format!("{B}/preview.png"), png()),
+        (".icon.png".into(), png()),
+        ("opaque.anim".into(), b"not a resource".to_vec()),
+    ]);
+    let package = fixture(dir.path(), entries);
+    let report: serde_json::Value =
+        serde_json::from_slice(&ok(run(&["info", path(&package), "--json"])).stdout).unwrap();
+    let stats = &report["statistics"];
+    assert_eq!(stats["files"]["count"], cases.len() + 1);
+    assert_eq!(stats["files"]["bytes"], cases.len() * 3);
+    assert_eq!(stats["folders"], 1);
+    assert_eq!(stats["extensions"][".anim"]["count"], 2);
+    assert_eq!(stats["extensions"]["<none>"]["count"], 1);
+    assert_eq!(stats["categories"]["animations"]["count"], 2);
+    assert_eq!(stats["auxiliary"]["preview"]["count"], 1);
+    assert_eq!(stats["auxiliary"]["special"]["count"], 1);
+    assert_eq!(stats["auxiliary"]["unknown"]["count"], 1);
+    for field in ["extensions", "categories"] {
+        let values: Vec<_> = stats[field].as_object().unwrap().values().collect();
+        assert_eq!(
+            values
+                .iter()
+                .map(|v| v["count"].as_u64().unwrap())
+                .sum::<u64>(),
+            stats["files"]["count"].as_u64().unwrap()
+        );
+        assert_eq!(
+            values
+                .iter()
+                .map(|v| v["bytes"].as_u64().unwrap())
+                .sum::<u64>(),
+            stats["files"]["bytes"].as_u64().unwrap()
+        );
+    }
+    for (_, category) in cases {
+        assert!(stats["categories"][category]["count"].as_u64().unwrap() > 0);
+    }
+    let scoped = ok(run(&["info", path(&package), "PackageSettings", "--json"]));
+    assert_eq!(
+        scoped.stdout,
+        ok(run(&[
+            "info",
+            path(&package),
+            "--path",
+            "PackageSettings",
+            "--json"
+        ]))
+        .stdout
+    );
+    let scoped: serde_json::Value = serde_json::from_slice(&scoped.stdout).unwrap();
+    assert_eq!(scoped["statistics"]["files"]["count"], 1);
+    assert_eq!(scoped["statistics"]["auxiliary"]["preview"]["count"], 1);
+    let text =
+        String::from_utf8(ok(run(&["info", path(&package), "Packages/com.demo/run.anim"])).stdout)
+            .unwrap();
+    assert!(text.contains("1 resource files, 3 bytes"));
+    assert!(text.contains(".anim\t1\t3"));
+    assert!(text.contains("animations\t1\t3"));
+}
+
+#[test]
 fn full_extract_preserves_non_assets_metadata_unknown_and_empty_folders() {
     let dir = TempDir::new().unwrap();
     let mut entries = record(A, "Assets/空目录", None, true);
