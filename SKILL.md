@@ -5,10 +5,8 @@ description: 使用 uup 检查、按目录查找解包、统计 Unity 文件类�
 
 # 使用 uup 操作 Unity 包
 
-> 本文包含 next 上已实现的 v2.1.0 扩展；正式版本同步和发布见 PROGRESS.md。
-
 项目/Cargo 包名是 `uup-cli`（ununitypackage-cli）；命令是 `uup`，Windows 可执行文件是 `uup.exe`。
-本文适用于 2.0.0。运行时无需 Unity Editor、.NET 或系统 tar。
+本文适用于 2.1.0。运行时无需 Unity Editor、.NET 或系统 tar。
 
 ## 准备工具
 
@@ -22,7 +20,7 @@ uup --help
 如果未安装且任务需要使用工具，按环境权限安装；已有可执行文件时直接使用：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.1.0 --locked
 ```
 
 源码构建需要 Rust 1.88 或更新版本。在仓库内运行 `cargo build --release --locked`，

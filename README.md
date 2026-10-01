@@ -4,17 +4,17 @@
 支持 macOS、Linux 和 Windows；使用纯 Rust gzip/tar，不依赖系统 tar 或 .NET。
 
 项目和 Cargo 包名为 `uup-cli`；安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
-Rust 版本线从 **2.0.0** 开始，承接原 .NET 的 1.0.0。
+当前版本为 **2.1.0**；Rust 版本线从 2.0.0 开始，承接原 .NET 的 1.0.0。
 
 完整操作示例、参数说明和旧版迁移对照见 [使用文档](docs/USAGE.md)。
 Agent 的命令选择、操作流程、程序调用示例和校验规则见 [SKILL.md](SKILL.md)。
 
 ## 安装 / 构建
 
-需要 Rust 1.88 或更新版本。安装 `v2.0.0`：
+需要 Rust 1.88 或更新版本。安装 `v2.1.0`：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.1.0 --locked
 ```
 
 或在仓库内构建：

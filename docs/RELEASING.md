@@ -16,7 +16,7 @@ Cargo.toml、Cargo.lock 的 uup-cli 版本和 tag 的语义版本必须一致，
 
 | tag | Cargo 版本 | GitHub Release |
 | --- | --- | --- |
-| `v2.0.0` | `2.0.0` | 稳定版 |
+| `v2.1.0` | `2.1.0` | 稳定版 |
 | `v2.1.0-beta.1` | `2.1.0-beta.1` | 预发布 |
 | `v2.1.0-alpha` | `2.1.0-alpha` | 预发布 |
 | `v2.1.0-rc.1` | `2.1.0-rc.1` | 预发布 |
@@ -34,7 +34,7 @@ Cargo.toml、Cargo.lock 的 uup-cli 版本和 tag 的语义版本必须一致，
 
 ```sh
 python -m unittest discover -s scripts -p 'test_release.py' -v
-python scripts/release.py metadata --tag v2.0.0
+python scripts/release.py metadata --tag v2.1.0
 cargo fmt --all --check
 cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked
@@ -47,8 +47,8 @@ python scripts/interoperability.py target/release/uup
 
 ```sh
 git push origin next
-git tag -a v2.0.0 -m 'Release 2.0.0'
-git push origin v2.0.0
+git tag -a v2.1.0 -m 'Release 2.1.0'
+git push origin v2.1.0
 ```
 
 不要移动已经发布的 tag。推送后核对远端 tag 解引用后的 SHA 与发布提交一致。
@@ -69,9 +69,9 @@ git push origin v2.0.0
 产物名称示例：
 
 ```text
-uup-v2.0.0-linux-x86_64.tar.gz
-uup-v2.0.0-macos-aarch64.tar.gz
-uup-v2.0.0-windows-x86_64.zip
+uup-v2.1.0-linux-x86_64.tar.gz
+uup-v2.1.0-macos-aarch64.tar.gz
+uup-v2.1.0-windows-x86_64.zip
 ```
 
 每个压缩包都附有同名 `.sha256` 文件。解压后根目录直接包含 `uup` / `uup.exe`，

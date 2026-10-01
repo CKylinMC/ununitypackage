@@ -31,7 +31,7 @@ Release-specific verification uses:
 
 ```sh
 python -m unittest discover -s scripts -p 'test_release.py' -v
-python scripts/release.py metadata --tag v2.0.0
+python scripts/release.py metadata --tag v2.1.0
 ```
 
 It covers stable/build-metadata tags, standard and legacy dotted prereleases,

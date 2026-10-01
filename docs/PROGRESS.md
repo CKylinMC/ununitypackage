@@ -1,6 +1,6 @@
 # Progress
 
-Updated: 2026-10-01 (Asia/Shanghai). Branch: next. Version: uup-cli 2.0.0.
+Updated: 2026-10-01 (Asia/Shanghai). Branch: next. Version: uup-cli 2.1.0.
 Original baseline: 0ea8d40.
 
 ## Status
@@ -23,9 +23,15 @@ literal new-feature examples, two embedded Python examples, frontmatter and loca
 links PASS on generated fixtures. Independent Python USTAR/GNU/local-PAX checks
 now additionally verify scope/statistics and metadata dump/edit/unchanged bytes;
 all three PASS. Seven release-script tests PASS and the release build PASS.
-Rust 1.88 is installed for a local minimum-version check. Next: run that check,
-synchronize 2.1.0 and current version examples, run release checks/bundle validation,
-push the release commit, then annotated v2.1.0 and observe native CI/publication.
+N5 checkpoint bc39519 is pushed and its remote SHA verified. Rust 1.88 also PASS:
+43 regressions against the new implementation. Cargo/lock/current version examples
+are now synchronized to 2.1.0. Remote next matches bc39519 and v2.1.0 is absent.
+Final 2.1.0 format/strict clippy, 43 regressions, release build, all three Python
+formats, seven release tests, tag/Cargo alignment and 32 CLI/two Python examples
+PASS. The local Linux bundle is created with uup 2.1.0 and current documents.
+Next: push this release commit, create/push annotated v2.1.0 on that exact commit,
+verify tag SHAs, then observe native CI/publication and download all release
+bundles for checksums/header/version verification. Tag creation is not yet done.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
 
@@ -37,7 +43,7 @@ Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existin
 | N3 metadata discovery/dump | Complete locally; native release CI pending |
 | N4 metadata edits | Complete locally; native release CI pending |
 | N5 tests/docs | Complete locally: 43 regressions, three formats, 32 CLI + 2 Python examples |
-| N6 2.1.0 release | Pending |
+| N6 2.1.0 release | Local release checks PASS; commit/tag push and native/publication pending |
 
 M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage

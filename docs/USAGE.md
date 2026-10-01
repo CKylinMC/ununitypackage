@@ -1,9 +1,6 @@
 # uup-cli 使用文档与旧版迁移
 
-> 本文包含 v2.1.0 新增的路径范围、文件统计和 metadata 发现/编辑。
-> 这些功能已在 next 实现；版本同步和正式发布按 PROGRESS.md 记录推进。
-
-适用于项目 `uup-cli 2.0.0`，全称 `ununitypackage-cli`。Rust 版本线从 2.0.0 承接原 .NET 的 1.0.0。
+适用于项目 `uup-cli 2.1.0`，全称 `ununitypackage-cli`。Rust 版本线从 2.0.0 承接原 .NET 的 1.0.0。
 安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
 工具直接处理 `.unitypackage` 的 gzip/tar 内容，可查看、解包、修改和打包，运行时无需 Unity Editor、.NET 或系统 `tar`。
 
@@ -12,7 +9,7 @@
 使用 Rust 1.88 或更新版本安装：
 
 ```sh
-cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.0.0 --locked
+cargo install --git https://github.com/CKylinMC/ununitypackage --tag v2.1.0 --locked
 uup --version
 uup --help
 ```
