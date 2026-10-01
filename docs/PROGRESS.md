@@ -16,8 +16,16 @@ implemented; local format/strict clippy and 43 regressions PASS. Summary/get/lis
 run without a writable temporary directory. Tests verify ambiguity handling,
 PNG header summaries, malformed/oversized JSON, dump conflicts/symlinks, pointer
 escaping/arrays, failed-edit preservation, identity and unknown byte retention.
-Next: finish documentation/examples and independent interoperability checks,
-then synchronize 2.1.0 and publish its tag after all relevant checks pass.
+N3/N4 checkpoint cb23e5e is pushed and its remote SHA verified. N5 usage and Agent
+documentation now covers scopes, statistics schema/categories, discovered kinds,
+summary/dump, selectors, pointer rules and opaque settings. Thirty-two distinct
+literal new-feature examples, two embedded Python examples, frontmatter and local
+links PASS on generated fixtures. Independent Python USTAR/GNU/local-PAX checks
+now additionally verify scope/statistics and metadata dump/edit/unchanged bytes;
+all three PASS. Seven release-script tests PASS and the release build PASS.
+Rust 1.88 is installed for a local minimum-version check. Next: run that check,
+synchronize 2.1.0 and current version examples, run release checks/bundle validation,
+push the release commit, then annotated v2.1.0 and observe native CI/publication.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
 
@@ -28,7 +36,7 @@ Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existin
 | N2 info statistics | Complete locally; native release CI pending |
 | N3 metadata discovery/dump | Complete locally; native release CI pending |
 | N4 metadata edits | Complete locally; native release CI pending |
-| N5 tests/docs | Pending |
+| N5 tests/docs | Complete locally: 43 regressions, three formats, 32 CLI + 2 Python examples |
 | N6 2.1.0 release | Pending |
 
 M0–M6 implementation milestones are complete. Rust is the primary project;

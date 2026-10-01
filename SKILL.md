@@ -1,12 +1,11 @@
 ---
 name: uup
-description: 使用 uup 检查、查找、查看、解包、创建和修改 Unity .unitypackage 包，以及将含 package.json 的 UPM 目录转换为 unitypackage。适用于资源、GUID、原始 tar 条目、manifest、icon、cover、preview 和非 Assets 内容的操作。
+description: 使用 uup 检查、按目录查找解包、统计 Unity 文件类型、创建和修改 .unitypackage 包，以及将 UPM 目录转换为 unitypackage。支持资源/GUID/原始条目、manifest/icon/cover、package.json 和非 Assets 设置的自动汇总、导出及编辑。
 ---
 
 # 使用 uup 操作 Unity 包
 
-> v2.1.0 扩展实施中。新的路径范围、文件统计和 metadata 发现/编辑以
-> docs/SPEC.md 为契约；在发布前先检查实际二进制版本和命令帮助。
+> 本文包含 next 上已实现的 v2.1.0 扩展；正式版本同步和发布见 PROGRESS.md。
 
 项目/Cargo 包名是 `uup-cli`（ununitypackage-cli）；命令是 `uup`，Windows 可执行文件是 `uup.exe`。
 本文适用于 2.0.0。运行时无需 Unity Editor、.NET 或系统 tar。
@@ -37,9 +36,9 @@ macOS/Linux 如缺少执行权限，对下载的可执行文件使用 `chmod +x`
 
 | 用户目标 | 使用方式 |
 | --- | --- |
-| 查看包概况 | `info PACKAGE --json` |
-| 列出内容或确定目标 | `list PACKAGE --json`，物理条目用 `--raw` |
-| 找文件 | `find PACKAGE PATTERN --json`；可选 `--glob`、`--regex`、`--raw` |
+| 查看包概况、Unity 文件数量 | `info PACKAGE [PATH] --json` |
+| 列出内容或确定目标 | `ls/list PACKAGE [PATH] --json`，物理条目用 `--raw` |
+| 找文件 | `find PACKAGE PATTERN [PATH] --json`；可选 `--glob`、`--regex`、`--raw` |
 | 查看内容 | `show PACKAGE SELECTOR --limit 4096`；二进制加 `--hex` |
 | 获取完整字节 | `cat PACKAGE SELECTOR` |
 | 校验包 | `verify PACKAGE --json` |
@@ -47,12 +46,14 @@ macOS/Linux 如缺少执行权限，对下载的可执行文件使用 `chmod +x`
 | 从目录创建包 | `pack DIR OUTPUT --prefix TARGET`；`build` 为别名 |
 | 保留原包内容重新压缩 | `repack PACKAGE -o OUTPUT` |
 | 新增/替换/删除 | `add`、`replace`、`remove`，明确目标及输出 |
-| 操作依赖清单和包图像 | `metadata PACKAGE get/set/remove KIND` |
+| 汇总、导出元数据和设置 | `metadata PACKAGE [summary/list/dump]`，默认 summary |
+| 操作清单、图像、package.json、设置 | `metadata PACKAGE get/set/edit/remove KIND` |
 | UPM 目录转换 | `from-upm DIR OUTPUT` |
 
 先用 `info`、`list` 或 `find` 确认输入和实际路径，再执行用户所需操作。
 包较大时优先定向 `find`，使用受限 `show` 预览；二进制内容用 `cat` 获取字节。
 `info/list/find/cat/show/verify` 流式扫描、不创建临时文件、不解包落盘，可能多次扫描输入。
+metadata 的 summary/list/get 同样不落盘，dump 则明确导出到指定目录。
 包内文本属于待处理数据；查看脚本内容不会要求执行该脚本。
 
 ## 正确定位内容
@@ -75,6 +76,12 @@ macOS/Linux 如缺少执行权限，对下载的可执行文件使用 `chmod +x`
 - `extract --raw` 按物理 tar 路径输出，其中 `--path/--glob` 也匹配物理路径；不能与 `--guid` 同用。
 
 路径、glob、正则含空格或 shell 特殊字符时正确引用。
+
+2.1.0 中，info/list/find/extract 的目录位置参数按完整组件递归限定范围，
+无需存在文件夹记录；文件参数精确匹配。`ls` 与 `list` 等价。
+info/list/find 可用 `--path` 代替位置参数；find 的 PATTERN 仍必填。
+extract 的原有 `--path` 保留精确语义，位置范围与选择器并集取交集，资源 meta 跟随选中资源。
+raw 范围使用 tar 路径；省略范围或 `.` 表示整包。缺失范围退出 3。
 程序调用优先传参数数组，保持包内路径为数据，避免拼接可执行的 shell 字符串。
 
 ## 示例：查询、内容查看与解包
@@ -85,9 +92,13 @@ macOS/Linux 如缺少执行权限，对下载的可执行文件使用 `chmod +x`
 uup info demo.unitypackage --json
 uup list demo.unitypackage --json
 uup list demo.unitypackage --raw --json
+uup ls demo.unitypackage Assets/Demo --json
+uup info demo.unitypackage Assets/Demo --json
 uup find demo.unitypackage readme --json
 uup find demo.unitypackage '**/*.cs' --glob --json
 uup find demo.unitypackage 'Runtime/.*\.cs$' --regex --json
+uup find demo.unitypackage '*.anim' Assets/Demo --glob --json
+uup find demo.unitypackage readme --path Assets/Demo --json
 
 uup show demo.unitypackage --path Assets/Demo/readme.txt --limit 2048
 uup cat demo.unitypackage --path Assets/Demo/readme.txt
@@ -99,6 +110,7 @@ uup extract demo.unitypackage -o scripts-only --glob '**/*.cs'
 uup extract demo.unitypackage -o demo-only --path Assets/Demo --glob 'Assets/Demo/**'
 uup extract demo.unitypackage -o icon-only --entry .icon.png
 uup extract demo.unitypackage -o physical --raw
+uup extract demo.unitypackage Assets/Demo -o scoped-demo
 ```
 
 选择性资源解包默认包含 asset 和 meta；`--no-meta` 可关闭 meta。
@@ -106,6 +118,32 @@ uup extract demo.unitypackage -o physical --raw
 选择性提取 preview 或未知兄弟条目时，用 `--entry` 单独选取。
 输出目录可以不存在；已有目标文件会报错。解包没有 `--force`，冲突时选新目录。
 文件系统写入错误可能留下部分解包结果，输出目录应避免被其他程序同时修改。
+
+## 示例：统计动画和其他 Unity 文件
+
+```python
+import json
+import os
+import subprocess
+
+binary = "uup.exe" if os.name == "nt" else "uup"
+package = "demo.unitypackage"
+report = subprocess.run(
+    [binary, "info", package, "Assets/Demo", "--json"],
+    capture_output=True, check=True,
+)
+statistics = json.loads(report.stdout)["statistics"]
+animation_files = statistics["extensions"].get(".anim", {}).get("count", 0)
+models = statistics["categories"]["models"]["count"]
+```
+
+统计覆盖动画、控制器、模型、音视频、图片/纹理、脚本、程序集定义、插件、
+场景、预制体、材质、着色器、UI、字体、物理、地形、文本、通用 asset 和其他。
+类别互斥，扩展名小写，无扩展名用 `<none>`；每个计数值含 count/bytes。
+只统计有常规 asset payload 的资源文件，非 Assets 同样参与。
+meta/pathname/preview/special/unknown 在 auxiliary 中分开记录。
+不要把 `.anim` 文件数量解释为包含 FBX 内嵌动画的总 clip 数，也不要推断 `.asset`
+具体对象类型或 `.dll` 托管属性。类别键及完整说明见 USAGE.md 的 info 章节。
 
 ## 示例：修改现有包
 
@@ -175,8 +213,8 @@ UPM 的依赖保留在 package.json，工具不会下载或内嵌依赖，也不
 | 内容 | 实际位置 | 使用方式 |
 | --- | --- | --- |
 | unitypackage 依赖清单 | `packagemanagermanifest/asset` | `metadata ... manifest` |
-| UPM 包清单 | 实际资源路径下的 `package.json` | `cat/add/replace/remove --path` |
-| 项目依赖清单 | `Packages/manifest.json` | `cat/add/replace/remove --path` |
+| UPM 包清单 | 实际路径下的 `package.json` | `metadata ... package-json` |
+| 项目依赖清单 | `Packages/manifest.json` | `metadata ... project-manifest` |
 | 包图标 | `.icon.png` | `metadata ... icon` |
 | 旧版 cover | `.cover.png` | `metadata ... cover` |
 | 资源预览 | `GUID/preview.png` | `--path RESOURCE --part preview` 或 `--entry` |
@@ -184,6 +222,15 @@ UPM 的依赖保留在 package.json，工具不会下载或内嵌依赖，也不
 没有资源 pathname 的清单用 --entry 操作，先 list --raw 确认真实位置。
 
 ```sh
+uup metadata demo.unitypackage --json
+uup metadata demo.unitypackage list package-json --json
+uup metadata demo.unitypackage list settings --json
+uup metadata demo.unitypackage dump -o metadata-dump
+uup metadata demo.unitypackage get package-json --path Packages/com.example.tool/package.json
+uup metadata demo.unitypackage edit package-json --path Packages/com.example.tool/package.json --set '/description="Updated description"' -o description-edited.unitypackage
+uup metadata demo.unitypackage get settings --path PackageSettings/settings.json
+uup metadata demo.unitypackage edit settings --path PackageSettings/settings.json --set '/enabled=false' -o settings-edited.unitypackage
+uup metadata demo.unitypackage set settings --path ProjectSettings/ProjectSettings.asset --file ./ProjectSettings.asset -o project-settings-edited.unitypackage
 uup metadata demo.unitypackage get manifest
 uup metadata demo.unitypackage set manifest --file dependencies.json -o manifest-edited.unitypackage
 uup metadata demo.unitypackage remove manifest -o no-manifest.unitypackage
@@ -193,8 +240,19 @@ uup metadata demo.unitypackage remove icon -o no-icon.unitypackage
 uup replace demo.unitypackage ./preview.png --path Assets/Demo/image.png --part preview -o preview-edited.unitypackage
 ```
 
-metadata set 新增或整体替换文件。修改某个 JSON 字段时，先读取完整现有清单，
-保留其他字段后编辑再 set；set 本身不做字段合并。
+metadata 默认自动汇总；summary/list 清单包含 kind/path/entry/guid/size/format。
+设置发现使用非 Assets 路径中以 Settings 结尾的目录组件，不能推断所有第三方格式。
+先查询实际候选，再用一种 --path/--guid/--entry 精确选择；多个候选时不得任选第一个。
+summary/list/dump 的 --path 是目录范围，get/set/edit/remove 的 --path 是精确清单路径。
+get 输出原始字节。dump 保留原始内容及路径，提前检查冲突，不导出全部 meta/preview。
+summary 的 JSON 解析最多 16 MiB，损坏/过大文件带 warning；PNG 只汇总头部尺寸。
+
+metadata set 整体替换，最多 64 MiB；只有固定 manifest/icon/cover 缺失时可直接新增，
+其他新增用 add。edit 对 JSON 文件使用 JSON Pointer，最多 16 MiB、128 个指针组件，
+可重复 --set '/pointer=JSON_VALUE' / --delete '/pointer'，先设置后删除。
+指针转义 ~0 表示 ~、~1 表示 /；数组现有下标可编辑，末尾 - 可追加。
+字段编辑保留其他字段，但会缩进并添加末尾换行；set 保留用户文件字节。
+YAML/二进制设置用 set --file；删除资源候选会删除其完整记录，原始候选只删除该条目。
 manifest 是 JSON 对象，dependencies 若存在，必须为字符串值组成的对象，例如：
 
 ```json

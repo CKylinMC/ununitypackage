@@ -38,7 +38,10 @@ SemVer 预发布及兼容的 `.alpha`、`.beta`、`.beta-1` 后缀标为 pre-rel
 uup info demo.unitypackage --json
 uup list demo.unitypackage
 uup list demo.unitypackage --raw
+uup ls demo.unitypackage Assets/Demo
+uup info demo.unitypackage Assets/Demo --json
 uup find demo.unitypackage '*.cs' --glob
+uup find demo.unitypackage '*.anim' Assets/Demo --glob
 uup find demo.unitypackage 'Runtime/.*\.cs$' --regex
 uup show demo.unitypackage --path Assets/Demo/readme.txt
 uup show demo.unitypackage --entry .icon.png --hex --limit 64
@@ -51,6 +54,10 @@ uup verify demo.unitypackage --json
 这些命令不创建临时文件。索引只保存条目信息、小型 pathname 和 meta；payload
 始终流式读取。压缩包需要顺序扫描，查看指定资源可能扫描多次。
 `cat` 输出原始字节；`show` 的预览有长度限制，二进制内容可使用 `--hex`。
+
+`ls/list/find/info/extract` 支持目录或文件范围，目录按路径组件包含后代，
+无需显式文件夹记录。`info` 按 Unity 常见类别和扩展名统计资源文件数量及字节，
+例如 JSON 中 `statistics.extensions[".anim"].count`；meta、预览和未知内容单独汇总。
 
 `--path` 指 Unity 资源路径，`--guid` 指资源 ID，`--entry` 指 tar 内原始条目路径。
 单条目操作中三者互斥。`--part asset|meta|preview` 默认选择 asset。
@@ -65,6 +72,7 @@ uup extract demo.unitypackage -o selected --path Assets/Demo/readme.txt
 uup extract demo.unitypackage -o scripts --glob '**/*.cs'
 uup extract demo.unitypackage -o icon-only --entry .icon.png
 uup extract demo.unitypackage -o physical --raw
+uup extract demo.unitypackage Assets/Demo -o demo-only
 ```
 
 选择资源时默认同时提取 `.meta`，可用 `--no-meta` 关闭。
@@ -105,9 +113,16 @@ preview、未知内容及支持的 tar 属性保持不变；gzip 的字节和容
 源目录中的符号链接、孤立 meta、重复 GUID 会报错。生成的最小 meta 不代表
 Unity 对每种 importer 自动生成的完整配置。
 
-## manifest 和图标
+## 元数据、设置和图标
 
 ```sh
+uup metadata demo.unitypackage --json
+uup metadata demo.unitypackage dump -o metadata
+uup metadata demo.unitypackage list package-json --json
+uup metadata demo.unitypackage list settings --json
+uup metadata demo.unitypackage get package-json --path Packages/com.example.tool/package.json
+uup metadata demo.unitypackage edit package-json --path Packages/com.example.tool/package.json --set '/description="Updated description"' -o description-edited.unitypackage
+uup metadata demo.unitypackage get settings --path PackageSettings/settings.json
 uup metadata demo.unitypackage get manifest
 uup metadata demo.unitypackage set manifest --file dependencies.json -o edited.unitypackage
 uup metadata demo.unitypackage set icon --file icon.png -o edited.unitypackage
@@ -120,8 +135,10 @@ uup metadata demo.unitypackage remove icon -o edited.unitypackage
 验证 PNG。`cover` 为旧工具的 `.cover.png`，不将它当作 Unity 的 import UI icon。
 metadata get 和 cat 一样输出原始内容。
 
-UPM 的 `package.json` 和项目的 `Packages/manifest.json` 是独立文件，使用
-`--path` 或 `--entry` 对其操作；工具不会将三种 manifest 混为一谈。
+UPM 的 `package.json` 和项目的 `Packages/manifest.json` 是独立文件，分别使用
+`package-json` 和 `project-manifest`。metadata 默认自动汇总，支持原样 dump，
+按类型发现非 Assets 设置文件；多个候选必须明确选择。JSON 可用 edit 修改字段，
+YAML/二进制设置用 set --file 替换，未修改资源和未知内容保持不变。
 
 ## UPM → unitypackage
 

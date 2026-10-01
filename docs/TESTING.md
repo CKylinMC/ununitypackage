@@ -73,6 +73,14 @@ environments without an Editor, record this gate as NOT RUN.
 
 ## Recorded implementation validation
 
+v2.1.0 development checks: local Linux format/strict clippy and 43 integration
+regressions PASS. Independent Python USTAR/GNU/local-PAX checks now also cover
+scope/statistics, metadata dump/edit and untouched bytes. Thirty-two distinct
+literal new-feature documentation commands and two SKILL Python examples PASS
+on generated fixtures; frontmatter and local documentation links were checked.
+Seven release-script tests PASS. Native v2.1.0 CI and publication are still pending;
+PROGRESS.md records the active release gate and subsequent outcome.
+
 Release commit 8a07187296c64d67f904825d371ed59375e03828 (v2.0.0) passed
 [release CI](https://github.com/CKylinMC/ununitypackage/actions/runs/36753329704)
 on Linux, macOS and Windows, and the Rust 1.88 minimum-toolchain job. Native jobs
