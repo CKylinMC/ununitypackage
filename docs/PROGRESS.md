@@ -29,9 +29,14 @@ are now synchronized to 2.1.0. Remote next matches bc39519 and v2.1.0 is absent.
 Final 2.1.0 format/strict clippy, 43 regressions, release build, all three Python
 formats, seven release tests, tag/Cargo alignment and 32 CLI/two Python examples
 PASS. The local Linux bundle is created with uup 2.1.0 and current documents.
-Next: push this release commit, create/push annotated v2.1.0 on that exact commit,
-verify tag SHAs, then observe native CI/publication and download all release
-bundles for checksums/header/version verification. Tag creation is not yet done.
+Release commit 7d0a45014a989d2537524a8c3eeb8befa4e002a7 is pushed and its remote SHA
+verified. Annotated v2.1.0 is pushed; remote tag object is
+1611a377fd7e11b924739c6e5d25f1b64fc373a2 and its peeled SHA equals that exact release
+commit. No tag was moved. At this checkpoint the new Actions run has not yet
+appeared in the API (event propagation); do not mistake the historical v2.0.0 run
+for v2.1.0 verification. Next: locate the v2.1.0 release run, observe all native/
+MSRV/publication jobs, then download every bundle/checksum and verify published
+stable status, architectures, binary names, documentation and version output.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
 
@@ -43,7 +48,7 @@ Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existin
 | N3 metadata discovery/dump | Complete locally; native release CI pending |
 | N4 metadata edits | Complete locally; native release CI pending |
 | N5 tests/docs | Complete locally: 43 regressions, three formats, 32 CLI + 2 Python examples |
-| N6 2.1.0 release | Local release checks PASS; commit/tag push and native/publication pending |
+| N6 2.1.0 release | Commit/tag pushed and SHA-verified; native/publication pending |
 
 M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage
