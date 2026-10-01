@@ -5,6 +5,9 @@ description: 使用 uup 检查、查找、查看、解包、创建和修改 Unit
 
 # 使用 uup 操作 Unity 包
 
+> v2.1.0 扩展实施中。新的路径范围、文件统计和 metadata 发现/编辑以
+> docs/SPEC.md 为契约；在发布前先检查实际二进制版本和命令帮助。
+
 项目/Cargo 包名是 `uup-cli`（ununitypackage-cli）；命令是 `uup`，Windows 可执行文件是 `uup.exe`。
 本文适用于 2.0.0。运行时无需 Unity Editor、.NET 或系统 tar。
 

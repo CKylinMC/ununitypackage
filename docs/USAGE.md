@@ -1,5 +1,9 @@
 # uup-cli 使用文档与旧版迁移
 
+> v2.1.0 扩展正在实施：将新增 ls 别名、查询/解包路径范围、info 类型统计，
+> 以及 metadata 自动汇总/导出、package.json 和非 Assets 设置查询编辑。
+> 当前已发布版本为 2.0.0；完成实现后本文将更新实际命令和示例。
+
 适用于项目 `uup-cli 2.0.0`，全称 `ununitypackage-cli`。Rust 版本线从 2.0.0 承接原 .NET 的 1.0.0。
 安装后的命令为 `uup`，可执行文件为 `uup`（macOS/Linux）或 `uup.exe`（Windows）。
 工具直接处理 `.unitypackage` 的 gzip/tar 内容，可查看、解包、修改和打包，运行时无需 Unity Editor、.NET 或系统 `tar`。

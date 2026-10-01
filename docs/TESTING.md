@@ -1,5 +1,26 @@
 # Verification strategy
 
+## v2.1.0 acceptance matrix
+
+- ls/list equivalence; positional/flag scopes; file and virtual-directory scopes;
+  component boundaries, Unicode, raw scopes, no-match exit 3 and legacy selectors.
+- Scoped extraction keeps metas, excludes siblings and preflights conflicts.
+- info checks case-folded extensions, all categories, count/byte sums, unknown and
+  extensionless files, folders/overhead separation and non-Assets resources.
+- metadata default summary/list/get run without a writable temporary directory;
+  discovery covers fixed entries, multiple package.json files, project manifest,
+  resource/raw settings, malformed JSON and oversized summaries.
+- dump preserves bytes and logical paths, detects existing files, duplicates,
+  symlinks and file/directory conflicts before creating any output.
+- set/edit/remove preserve GUID/meta/preview/unknown bytes; JSON Pointer tests
+  cover escaping, parent creation, arrays and invalid edits; failed mutations
+  preserve source and existing destination. YAML/binary settings use full set.
+- Update usage and Agent examples, run format/clippy/Rust/release tests and the
+  independent Python interoperability check before tagging. Native Linux/macOS/
+  Windows and Rust 1.88 run on v2.1.0 before automated Release publication.
+- Verify published stable v2.1.0, generated notes, three bundles/checksums and
+  actual binary names, headers and version output. Unity Editor remains separate.
+
 Run cargo fmt --check, cargo clippy --all-targets -- -D warnings and cargo test
 --locked. Use native ubuntu, macOS and Windows CI; build release artifacts there.
 Test supported minimum Rust separately if a rust-version is declared.

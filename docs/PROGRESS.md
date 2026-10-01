@@ -5,6 +5,23 @@ Original baseline: 0ea8d40.
 
 ## Status
 
+Active goal: user-authorized v2.1.0 extension and stable release. N0 documentation
+contract is prepared; implementation has not started. Next actions: push this
+documentation checkpoint, implement shared scopes/ls, info statistics, metadata
+discovery and JSON editing, then regressions/docs and version/tag publication.
+Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
+2.0.0 validation below is historical and is not evidence for the new features.
+
+| v2.1.0 goal | Status |
+| --- | --- |
+| N0 specs before code | Prepared; push and remote SHA verification next |
+| N1 scopes/ls | Pending |
+| N2 info statistics | Pending |
+| N3 metadata discovery/dump | Pending |
+| N4 metadata edits | Pending |
+| N5 tests/docs | Pending |
+| N6 2.1.0 release | Pending |
+
 M0–M6 implementation milestones are complete. Rust is the primary project;
 the original .NET project is retained under legacy/dotnet. The requested usage
 guide and binary-name correction are complete and have passed native CI.
