@@ -9,6 +9,7 @@ use uup_cli::{
     NoMatch,
     archive::{Index, Limits, scan},
     extract::{Extraction, extract},
+    metadata::{self, Kind as MetadataKind},
     mutate,
     pack::{self, PackOptions},
     query::{self, Part, Scope, Selector},
@@ -72,35 +73,81 @@ impl PathScope {
         Scope::new(self.inside_path.as_deref().or(self.path.as_deref()))
     }
 }
-#[derive(ValueEnum, Clone)]
-enum MetadataKind {
-    Manifest,
-    Icon,
-    Cover,
+#[derive(Args, Default)]
+#[group(id = "metadata_selector", multiple = false)]
+struct MetadataSelect {
+    #[arg(long)]
+    path: Option<String>,
+    #[arg(long)]
+    guid: Option<String>,
+    #[arg(long)]
+    entry: Option<String>,
 }
-impl MetadataKind {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Manifest => "manifest",
-            Self::Icon => "icon",
-            Self::Cover => "cover",
+impl MetadataSelect {
+    fn selector(&self) -> Selector {
+        Selector {
+            path: self.path.clone(),
+            guid: self.guid.clone(),
+            entry: self.entry.clone(),
+            ..Default::default()
         }
     }
 }
 #[derive(Subcommand)]
 enum MetadataCommand {
+    /// Discover metadata and summarize bounded JSON/image details.
+    Summary {
+        #[arg(long)]
+        path: Option<String>,
+    },
+    /// List discovered metadata, optionally filtered by kind and path scope.
+    List {
+        kind: Option<MetadataKind>,
+        #[arg(long)]
+        path: Option<String>,
+    },
+    /// Export discovered files at their original logical/raw paths.
+    Dump {
+        #[arg(short, long)]
+        output: PathBuf,
+        #[arg(long)]
+        kind: Option<MetadataKind>,
+        #[arg(long)]
+        path: Option<String>,
+    },
+    /// Stream exact metadata bytes; select explicitly when multiple files exist.
     Get {
         kind: MetadataKind,
+        #[command(flatten)]
+        select: MetadataSelect,
     },
+    /// Replace an existing metadata file, or add a missing manifest/icon/cover.
     Set {
         kind: MetadataKind,
         #[arg(long)]
         file: PathBuf,
         #[command(flatten)]
+        select: MetadataSelect,
+        #[command(flatten)]
         destination: Destination,
     },
+    /// Set/delete JSON Pointer fields while preserving other fields.
+    Edit {
+        kind: MetadataKind,
+        #[command(flatten)]
+        select: MetadataSelect,
+        #[arg(long, required_unless_present = "delete")]
+        set: Vec<String>,
+        #[arg(long, required_unless_present = "set")]
+        delete: Vec<String>,
+        #[command(flatten)]
+        destination: Destination,
+    },
+    /// Delete a discovered file and its resource record if present.
     Remove {
         kind: MetadataKind,
+        #[command(flatten)]
+        select: MetadataSelect,
         #[command(flatten)]
         destination: Destination,
     },
@@ -238,11 +285,11 @@ enum Command {
         #[command(flatten)]
         destination: Destination,
     },
-    /// Read, set or delete manifest/icon/cover metadata.
+    /// Discover, summarize, export and edit package metadata/settings.
     Metadata {
         package: PathBuf,
         #[command(subcommand)]
-        action: MetadataCommand,
+        action: Option<MetadataCommand>,
     },
     /// Convert a package.json directory to a Unity package.
     FromUpm {
@@ -576,28 +623,91 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Metadata { package, action } => {
             let idx = open(package)?;
-            match action {
-                MetadataCommand::Get { kind } => {
-                    mutate::metadata_get(&idx, kind.name(), &mut io::stdout().lock())?
+            let default_action = MetadataCommand::Summary { path: None };
+            match action.as_ref().unwrap_or(&default_action) {
+                MetadataCommand::Summary { path } => {
+                    let report = metadata::summary(&idx, &Scope::new(path.as_deref())?)?;
+                    if cli.json {
+                        emit(&report)?;
+                    } else {
+                        println!("{} metadata files", report.entries.len());
+                        for record in report.entries {
+                            println!(
+                                "{}\t{}\t{}\t{}",
+                                record.item.kind.name(),
+                                record.item.size,
+                                record.item.path,
+                                record.details
+                            );
+                            if let Some(warning) = record.warning {
+                                eprintln!("warning: {}: {warning}", record.item.path);
+                            }
+                        }
+                    }
+                }
+                MetadataCommand::List { kind, path } => {
+                    let items = metadata::list(&idx, *kind, &Scope::new(path.as_deref())?)?;
+                    if cli.json {
+                        emit(&items)?;
+                    } else {
+                        for item in items {
+                            println!(
+                                "{}\t{}\t{}\t{}",
+                                item.kind.name(),
+                                item.size,
+                                item.path,
+                                item.entry
+                            );
+                        }
+                    }
+                }
+                MetadataCommand::Dump { output, kind, path } => {
+                    let count = metadata::dump(&idx, output, *kind, &Scope::new(path.as_deref())?)?;
+                    if cli.json {
+                        emit(&json!({"dumped":count,"output":output}))?;
+                    } else {
+                        eprintln!("dumped {count} metadata files to {}", output.display());
+                    }
+                }
+                MetadataCommand::Get { kind, select } => {
+                    metadata::get(&idx, *kind, &select.selector(), &mut io::stdout().lock())?
                 }
                 MetadataCommand::Set {
                     kind,
                     file,
+                    select,
                     destination,
-                } => mutate::metadata_set(
+                } => metadata::set(
                     &idx,
-                    kind.name(),
+                    *kind,
+                    &select.selector(),
                     file,
                     &destination.output,
                     destination.force,
                 )?,
-                MetadataCommand::Remove { kind, destination } => mutate::remove(
+                MetadataCommand::Edit {
+                    kind,
+                    select,
+                    set,
+                    delete,
+                    destination,
+                } => metadata::edit(
                     &idx,
-                    &Selector {
-                        entry: Some(mutate::metadata_path(kind.name())?.into()),
-                        ..Default::default()
-                    },
-                    false,
+                    *kind,
+                    &select.selector(),
+                    set,
+                    delete,
+                    &destination.output,
+                    destination.force,
+                )?,
+                MetadataCommand::Remove {
+                    kind,
+                    select,
+                    destination,
+                } => metadata::remove(
+                    &idx,
+                    *kind,
+                    &select.selector(),
                     &destination.output,
                     destination.force,
                 )?,
@@ -654,7 +764,11 @@ fn run(cli: &Cli) -> Result<()> {
         | Command::Remove { destination, .. } => Some(destination),
         Command::Metadata {
             action:
-                MetadataCommand::Set { destination, .. } | MetadataCommand::Remove { destination, .. },
+                Some(
+                    MetadataCommand::Set { destination, .. }
+                    | MetadataCommand::Edit { destination, .. }
+                    | MetadataCommand::Remove { destination, .. },
+                ),
             ..
         } => Some(destination),
         _ => None,

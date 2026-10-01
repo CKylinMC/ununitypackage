@@ -143,7 +143,8 @@ Resource removal deletes its whole record; raw removal deletes its entry.
 edit uses repeatable --set '/pointer=JSON_VALUE' and --delete '/pointer'. JSON
 Pointer escaping follows RFC 6901; missing object parents can be created, array
 indexes must be valid and '-' appends on set. Apply sets in order, then deletes
-in order. Invalid pointers/deletions/types fail before output. JSON documents
+in order. Pointers have at most 128 components. Invalid pointers/deletions/types
+fail before output. JSON documents
 must remain objects; serialize edited JSON with indentation and a final newline,
 retaining all untouched fields. Editing YAML/binary settings is not supported;
 use set for whole-file replacement.
@@ -152,4 +153,6 @@ dump -o DIR exports discovered files at logical resource paths or physical raw
 paths, retaining exact bytes. It excludes arbitrary asset metas/previews and
 uses extraction preflight rules for existing files, links and path collisions.
 summary/list/get never create temporary files or extract to disk. Summary parsing
-is bounded and reports malformed/oversized metadata without dropping inventory.
+is bounded (JSON summaries/edits: 16 MiB; set files: 64 MiB) and reports
+malformed/oversized metadata without dropping inventory. PNG summaries inspect
+only the header; PNG set validates complete decoding.

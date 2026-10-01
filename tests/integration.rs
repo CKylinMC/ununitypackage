@@ -375,6 +375,577 @@ fn info_counts_unity_extensions_disjoint_categories_and_scopes() {
     assert!(text.contains("animations\t1\t3"));
 }
 
+fn metadata_fixture(root: &Path) -> PathBuf {
+    let mut entries = record(
+        A,
+        "Packages/com.demo/package.json",
+        Some(
+            br#"{
+  "name":"com.demo", "version":"1.0.0", "description":"keep unless deleted",
+  "dependencies":{"com.old":"1.2.3"}, "custom":{"enabled":true},
+  "a/b":{"~key":1}, "items":["first","second"]
+}
+"#,
+        ),
+        false,
+    );
+    entries.extend(record(
+        B,
+        "PackageSettings/editor.json",
+        Some(br#"{"enabled":true,"unknown":[1,2]}"#),
+        false,
+    ));
+    entries.extend(record(
+        "33333333333333333333333333333333",
+        "ProjectSettings/ProjectSettings.asset",
+        Some(b"%YAML 1.1\n---\nPlayerSettings:\n  value: 1\n"),
+        false,
+    ));
+    entries.extend(record(
+        "44444444444444444444444444444444",
+        "Assets/Settings/local.json",
+        Some(b"{}"),
+        false,
+    ));
+    entries.extend(record(
+        "55555555555555555555555555555555",
+        "Packages/manifest.json",
+        Some(br#"{"dependencies":{"com.demo":"file:demo"},"custom":42}"#),
+        false,
+    ));
+    entries.extend([
+        (
+            "extras/package.json".into(),
+            br#"{"name":"com.other","version":"1.0.0"}"#.to_vec(),
+        ),
+        (
+            "UserSettings/user.json".into(),
+            b"{\"color\":\"blue\"}".to_vec(),
+        ),
+        (
+            "Packages/com.other/Runtime/PluginSettings/config.bin".into(),
+            vec![0, 255, 1],
+        ),
+        (
+            "packagemanagermanifest/asset".into(),
+            br#"{"dependencies":{"com.demo":"1.0.0"}}"#.to_vec(),
+        ),
+        (".icon.png".into(), png()),
+        (".cover.png".into(), png()),
+        (format!("{A}/preview.png"), png()),
+        (format!("{A}/unknown"), b"opaque".to_vec()),
+    ]);
+    fixture(root, entries)
+}
+
+#[test]
+fn metadata_discovers_summarizes_and_selects_without_temp_files() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let expected = contents(&package);
+    let report = ok(run(&["metadata", path(&package), "--json"]));
+    assert_eq!(
+        report.stdout,
+        ok(run(&["metadata", path(&package), "summary", "--json"])).stdout
+    );
+    let report: serde_json::Value = serde_json::from_slice(&report.stdout).unwrap();
+    assert_eq!(report["entries"].as_array().unwrap().len(), 10);
+    assert_eq!(report["counts"]["package-json"], 2);
+    assert_eq!(report["counts"]["settings"], 4);
+    let entries = report["entries"].as_array().unwrap();
+    assert!(
+        !entries
+            .iter()
+            .any(|i| i["path"] == "Assets/Settings/local.json")
+    );
+    let icon = entries.iter().find(|i| i["kind"] == "icon").unwrap();
+    assert_eq!(icon["details"]["width"], 1);
+    assert_eq!(icon["details"]["validation"], "header-only");
+    let upm = entries.iter().find(|i| i["guid"] == A).unwrap();
+    assert_eq!(upm["details"]["name"], "com.demo");
+    assert_eq!(upm["details"]["dependencies"], 1);
+    assert_eq!(upm["entry"], format!("{A}/asset"));
+    let ambiguous = run(&["metadata", path(&package), "get", "package-json"]);
+    assert_eq!(ambiguous.status.code(), Some(1));
+    let message = String::from_utf8(ambiguous.stderr).unwrap();
+    assert!(
+        message.contains("extras/package.json")
+            && message.contains("Packages/com.demo/package.json")
+    );
+    assert_eq!(
+        run(&["metadata", path(&package), "get", "icon", "--guid", A])
+            .status
+            .code(),
+        Some(3)
+    );
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "get",
+            "package-json",
+            "--guid",
+            A,
+            "--path",
+            "Packages/com.demo/package.json"
+        ])
+        .status
+        .code(),
+        Some(2)
+    );
+    let invalid = dir.path().join("missing-temp");
+    for args in [
+        vec!["metadata", path(&package), "--json"],
+        vec![
+            "metadata",
+            path(&package),
+            "summary",
+            "--path",
+            "Packages/com.demo",
+            "--json",
+        ],
+        vec!["metadata", path(&package), "list", "settings", "--json"],
+        vec![
+            "metadata",
+            path(&package),
+            "get",
+            "package-json",
+            "--guid",
+            A,
+            "--json",
+        ],
+        vec!["info", path(&package), "Packages/com.demo", "--json"],
+        vec!["ls", path(&package), "PackageSettings", "--json"],
+    ] {
+        let output = ok(Command::new(env!("CARGO_BIN_EXE_uup"))
+            .args(&args)
+            .env("TMPDIR", &invalid)
+            .env("TMP", &invalid)
+            .env("TEMP", &invalid)
+            .output()
+            .unwrap());
+        if args.contains(&"get") {
+            assert_eq!(output.stdout, expected[&format!("{A}/asset")]);
+        }
+    }
+    assert!(!invalid.exists());
+    let raw = ok(run(&[
+        "metadata",
+        path(&package),
+        "get",
+        "settings",
+        "--entry",
+        "UserSettings/user.json",
+    ]));
+    assert_eq!(raw.stdout, expected["UserSettings/user.json"]);
+    let project = ok(run(&[
+        "metadata",
+        path(&package),
+        "get",
+        "project-manifest",
+    ]));
+    assert_eq!(
+        project.stdout,
+        expected["55555555555555555555555555555555/asset"]
+    );
+}
+
+#[test]
+fn metadata_dump_preserves_bytes_and_preflights_all_destinations() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let expected = contents(&package);
+    let items: serde_json::Value =
+        serde_json::from_slice(&ok(run(&["metadata", path(&package), "list", "--json"])).stdout)
+            .unwrap();
+    let out = dir.path().join("dump");
+    let result = ok(run(&[
+        "metadata",
+        path(&package),
+        "dump",
+        "-o",
+        path(&out),
+        "--json",
+    ]));
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&result.stdout).unwrap()["dumped"],
+        10
+    );
+    for item in items.as_array().unwrap() {
+        assert_eq!(
+            fs::read(out.join(item["path"].as_str().unwrap())).unwrap(),
+            expected[item["entry"].as_str().unwrap()]
+        );
+    }
+    assert!(!out.join(format!("{A}/preview.png")).exists());
+    assert!(!out.join("Packages/com.demo/package.json.meta").exists());
+    let conflict = dir.path().join("conflict");
+    fs::create_dir_all(conflict.join("extras")).unwrap();
+    fs::write(conflict.join("extras/package.json"), b"keep").unwrap();
+    assert_eq!(
+        run(&["metadata", path(&package), "dump", "-o", path(&conflict)])
+            .status
+            .code(),
+        Some(1)
+    );
+    assert!(!conflict.join(".icon.png").exists());
+    assert!(!conflict.join("Packages").exists());
+    assert_eq!(
+        fs::read(conflict.join("extras/package.json")).unwrap(),
+        b"keep"
+    );
+    let filtered = dir.path().join("filtered");
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "dump",
+        "--kind",
+        "settings",
+        "--path",
+        "PackageSettings",
+        "-o",
+        path(&filtered),
+    ]));
+    assert_eq!(
+        fs::read(filtered.join("PackageSettings/editor.json")).unwrap(),
+        expected[&format!("{B}/asset")]
+    );
+    assert!(!filtered.join("ProjectSettings").exists());
+    let missing = dir.path().join("missing");
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "dump",
+            "--path",
+            "Nowhere",
+            "-o",
+            path(&missing)
+        ])
+        .status
+        .code(),
+        Some(3)
+    );
+    assert!(!missing.exists());
+}
+
+#[test]
+fn metadata_dump_rejects_logical_raw_and_file_directory_collisions() {
+    let dir = TempDir::new().unwrap();
+    for raw_path in [
+        "Packages/com.demo/package.json",
+        "Packages/com.demo/package.json/nested/package.json",
+    ] {
+        let mut entries = record(A, "Packages/com.demo/package.json", Some(b"{}"), false);
+        entries.push((raw_path.into(), b"{}".to_vec()));
+        let package = fixture(dir.path(), entries);
+        let out = dir.path().join("out");
+        assert_eq!(
+            run(&["metadata", path(&package), "dump", "-o", path(&out)])
+                .status
+                .code(),
+            Some(1)
+        );
+        assert!(!out.exists());
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn metadata_dump_refuses_symlink_parents() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let output = dir.path().join("output");
+    let elsewhere = dir.path().join("elsewhere");
+    fs::create_dir(&output).unwrap();
+    fs::create_dir(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, output.join("Packages")).unwrap();
+    assert_eq!(
+        run(&["metadata", path(&package), "dump", "-o", path(&output)])
+            .status
+            .code(),
+        Some(1)
+    );
+    assert!(!output.join(".icon.png").exists());
+    assert!(!elsewhere.join("com.demo").exists());
+}
+
+#[test]
+fn metadata_json_pointer_edits_preserve_identity_unknown_fields_and_entries() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let original = fs::read(&package).unwrap();
+    let expected = contents(&package);
+    let out = dir.path().join("edited.unitypackage");
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "edit",
+        "package-json",
+        "--guid",
+        A,
+        "--set",
+        "/version=\"2.3.4\"",
+        "--set",
+        "/dependencies/com.sample=\"2.0.0\"",
+        "--set",
+        "/new/nested=true",
+        "--set",
+        "/a~1b/~0key=2",
+        "--set",
+        "/items/-={\"x\":1}",
+        "--set",
+        "/items/0=\"changed\"",
+        "--delete",
+        "/description",
+        "--delete",
+        "/items/1",
+        "-o",
+        path(&out),
+    ]));
+    index(&out).ensure_valid().unwrap();
+    let mut actual = contents(&out);
+    let payload = actual.remove(&format!("{A}/asset")).unwrap();
+    assert!(payload.ends_with(b"\n"));
+    let value: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    assert_eq!(value["version"], "2.3.4");
+    assert_eq!(value["name"], "com.demo");
+    assert_eq!(value["custom"]["enabled"], true);
+    assert_eq!(value["dependencies"]["com.old"], "1.2.3");
+    assert_eq!(value["dependencies"]["com.sample"], "2.0.0");
+    assert_eq!(value["new"]["nested"], true);
+    assert_eq!(value["a/b"]["~key"], 2);
+    assert!(value.get("description").is_none());
+    assert_eq!(value["items"], serde_json::json!(["changed", {"x":1}]));
+    let mut untouched = expected;
+    untouched.remove(&format!("{A}/asset"));
+    assert_eq!(actual, untouched);
+    assert_eq!(fs::read(&package).unwrap(), original);
+    let idx = index(&out);
+    let resource = idx.resources.iter().find(|r| r.guid == A).unwrap();
+    assert_eq!(resource.path, "Packages/com.demo/package.json");
+    assert!(resource.meta.is_some() && resource.preview.is_some());
+}
+
+#[test]
+fn invalid_metadata_edits_leave_source_and_existing_destination_untouched() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let original = fs::read(&package).unwrap();
+    let out = dir.path().join("keep.unitypackage");
+    fs::write(&out, b"keep me").unwrap();
+    for (operation, expression) in [
+        ("--set", "version=1"),
+        ("--set", "/bad~2key=1"),
+        ("--set", "/items/99=1"),
+        ("--set", "/items/01=1"),
+        ("--set", "/items/-/child=1"),
+        ("--set", "/version/child=1"),
+        ("--set", "/new=not-json"),
+        ("--set", "=[]"),
+        ("--delete", "/missing"),
+        ("--delete", ""),
+    ] {
+        let output = run(&[
+            "metadata",
+            path(&package),
+            "edit",
+            "package-json",
+            "--guid",
+            A,
+            operation,
+            expression,
+            "-o",
+            path(&out),
+            "--force",
+        ]);
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "{expression}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(fs::read(&out).unwrap(), b"keep me");
+        assert_eq!(fs::read(&package).unwrap(), original);
+    }
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "edit",
+            "package-json",
+            "--guid",
+            A,
+            "-o",
+            path(&out)
+        ])
+        .status
+        .code(),
+        Some(2)
+    );
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "edit",
+            "settings",
+            "--path",
+            "ProjectSettings/ProjectSettings.asset",
+            "--set",
+            "/x=1",
+            "-o",
+            path(&out),
+            "--force"
+        ])
+        .status
+        .code(),
+        Some(1)
+    );
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "edit",
+            "project-manifest",
+            "--set",
+            "/dependencies/com.bad=42",
+            "-o",
+            path(&out),
+            "--force"
+        ])
+        .status
+        .code(),
+        Some(1)
+    );
+    assert_eq!(fs::read(&out).unwrap(), b"keep me");
+}
+
+#[test]
+fn metadata_set_and_remove_handle_resource_and_raw_settings() {
+    let dir = TempDir::new().unwrap();
+    let package = metadata_fixture(dir.path());
+    let expected = contents(&package);
+    let file = dir.path().join("replacement");
+    let updated = b"%YAML 1.1\n---\nPlayerSettings:\n  value: 2\n";
+    fs::write(&file, updated).unwrap();
+    let out = dir.path().join("yaml.unitypackage");
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "set",
+        "settings",
+        "--path",
+        "ProjectSettings/ProjectSettings.asset",
+        "--file",
+        path(&file),
+        "-o",
+        path(&out),
+    ]));
+    let mut new = expected.clone();
+    new.insert(
+        "33333333333333333333333333333333/asset".into(),
+        updated.to_vec(),
+    );
+    assert_eq!(contents(&out), new);
+    let raw = dir.path().join("raw.unitypackage");
+    fs::write(&file, [255, 0, 8]).unwrap();
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "set",
+        "settings",
+        "--entry",
+        "Packages/com.other/Runtime/PluginSettings/config.bin",
+        "--file",
+        path(&file),
+        "-o",
+        path(&raw),
+    ]));
+    let mut new = expected.clone();
+    new.insert(
+        "Packages/com.other/Runtime/PluginSettings/config.bin".into(),
+        vec![255, 0, 8],
+    );
+    assert_eq!(contents(&raw), new);
+    let removed = dir.path().join("removed.unitypackage");
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "remove",
+        "package-json",
+        "--guid",
+        A,
+        "-o",
+        path(&removed),
+    ]));
+    let mut new = expected.clone();
+    new.retain(|name, _| !name.starts_with(&format!("{A}/")));
+    assert_eq!(contents(&removed), new);
+    index(&removed).ensure_valid().unwrap();
+    let removed_raw = dir.path().join("removed-raw.unitypackage");
+    ok(run(&[
+        "metadata",
+        path(&package),
+        "remove",
+        "settings",
+        "--entry",
+        "UserSettings/user.json",
+        "-o",
+        path(&removed_raw),
+    ]));
+    let mut new = expected;
+    new.remove("UserSettings/user.json");
+    assert_eq!(contents(&removed_raw), new);
+    let absent = dir.path().join("absent.unitypackage");
+    assert_eq!(
+        run(&[
+            "metadata",
+            path(&package),
+            "set",
+            "settings",
+            "--path",
+            "PackageSettings/missing.bin",
+            "--file",
+            path(&file),
+            "-o",
+            path(&absent)
+        ])
+        .status
+        .code(),
+        Some(3)
+    );
+    assert!(!absent.exists());
+}
+
+#[test]
+fn malformed_and_oversized_metadata_remain_discoverable_and_dumpable() {
+    let dir = TempDir::new().unwrap();
+    let large = vec![b' '; (16 << 20) + 1];
+    let package = fixture(
+        dir.path(),
+        vec![
+            ("package.json".into(), b"{bad".to_vec()),
+            (".icon.png".into(), b"bad png".to_vec()),
+            ("UserSettings/large.json".into(), large.clone()),
+        ],
+    );
+    let summary: serde_json::Value =
+        serde_json::from_slice(&ok(run(&["metadata", path(&package), "--json"])).stdout).unwrap();
+    let entries = summary["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 3);
+    assert!(entries.iter().all(|i| i["warning"].is_string()));
+    assert_eq!(
+        ok(run(&["metadata", path(&package), "get", "package-json"])).stdout,
+        b"{bad"
+    );
+    let out = dir.path().join("dump");
+    ok(run(&["metadata", path(&package), "dump", "-o", path(&out)]));
+    assert_eq!(
+        fs::read(out.join("UserSettings/large.json")).unwrap(),
+        large
+    );
+}
+
 #[test]
 fn full_extract_preserves_non_assets_metadata_unknown_and_empty_folders() {
     let dir = TempDir::new().unwrap();

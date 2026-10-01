@@ -1,6 +1,7 @@
 //! Portable Unity package operations. Payloads are never stored in the index.
 pub mod archive;
 pub mod extract;
+pub mod metadata;
 pub mod mutate;
 pub mod pack;
 pub mod paths;

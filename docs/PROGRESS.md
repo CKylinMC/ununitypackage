@@ -10,8 +10,14 @@ checkpoint 321db22 is pushed and its remote SHA verified. N1/N2 shared scopes,
 ls alias and info statistics are implemented. Local format, strict clippy and
 35 integration regressions PASS. New cases verify Unicode/virtual directories,
 component boundaries, selector intersections, raw scopes, metadata inclusion and
-disjoint category/extension count and byte sums. Next: implement metadata
-discovery/summary/dump and JSON editing, then docs and version/tag publication.
+disjoint category/extension count and byte sums. N3/N4 metadata inventory,
+default summary, safe dump, resource/raw settings and JSON Pointer editing are
+implemented; local format/strict clippy and 43 regressions PASS. Summary/get/list
+run without a writable temporary directory. Tests verify ambiguity handling,
+PNG header summaries, malformed/oversized JSON, dump conflicts/symlinks, pointer
+escaping/arrays, failed-edit preservation, identity and unknown byte retention.
+Next: finish documentation/examples and independent interoperability checks,
+then synchronize 2.1.0 and publish its tag after all relevant checks pass.
 Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existing
 2.0.0 validation below is historical and is not evidence for the new features.
 
@@ -20,8 +26,8 @@ Baseline next is 56f4226; v2.1.0 must be created only after checks pass. Existin
 | N0 specs before code | Complete; 321db22 pushed and verified |
 | N1 scopes/ls | Complete locally; native release CI pending |
 | N2 info statistics | Complete locally; native release CI pending |
-| N3 metadata discovery/dump | Pending |
-| N4 metadata edits | Pending |
+| N3 metadata discovery/dump | Complete locally; native release CI pending |
+| N4 metadata edits | Complete locally; native release CI pending |
 | N5 tests/docs | Pending |
 | N6 2.1.0 release | Pending |
 
